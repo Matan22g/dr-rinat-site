@@ -6,7 +6,7 @@
     "message": "רינתי היקרה ❤️\nרציתי להודות לך מעומק הלב על טיפול מושלם... הרגשתי שאני בידיים טובות 🙌\nהכול נעשה בעדינות, במקצועיות ובאסתטיקה, בדיוק במידה הנכונה עבורי ❤️🙏",
     "time": "13:17",
     "stars": 5,
-    "proof_image": "./imgs/reviews/screenshot_01.jpg"
+    "proof_image": "screenshot_01.jpg"
   },
   {
     "id": 2,
@@ -15,7 +15,7 @@
     "message": "וואו! התוצאה פשוט מדהימה. לא האמנתי שאפשר להגיע למראה כל כך טבעי. תודה על הסבלנות והמקצועיות! 🌸",
     "time": "09:42",
     "stars": 5,
-    "proof_image": "./imgs/reviews/screenshot_01.jpg"
+    "proof_image": "screenshot_01.jpg"
   },
   {
     "id": 3,
@@ -24,6 +24,6 @@
     "message": "היחס האישי שלך שווה הכל. תודה שגרמת לי להרגיש בנוח ועל התוצאה המושלמת בשפתיים 💋",
     "time": "18:20",
     "stars": 5,
-    "proof_image": "./imgs/reviews/screenshot_01.jpg"
+    "proof_image": "screenshot_01.jpg"
   }
 ]

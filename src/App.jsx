@@ -280,10 +280,15 @@ const App = () => {
               </p>
               
               <div className="flex flex-col sm:flex-row gap-5 justify-center md:justify-start">
-                <button className="bg-[#9E8FB2] text-white px-10 py-5 rounded-full font-bold text-xl hover:bg-[#8D7FA3] transition-all shadow-xl shadow-[#9E8FB2]/30 flex items-center justify-center gap-3 active:scale-95">
-                  <Calendar size={22} />
-                  תיאום תור אונליין
-                </button>
+                <a 
+                  href={`https://wa.me/972528327115?text=${encodeURIComponent('היי ד"ר רינת, אשמח לפרטים לגבי ייעוץ...')}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="bg-[#9E8FB2] text-white px-10 py-5 rounded-full font-bold text-xl hover:bg-[#8D7FA3] transition-all shadow-xl shadow-[#9E8FB2]/30 flex items-center justify-center gap-3 active:scale-95"
+                >
+                  <WhatsappIcon size={22} />
+                  מעוניינת בעוד פרטים
+                </a>
                 <button 
                    onClick={(e) => handleScrollTo(e, '#treatments')}
                    className="border-2 border-[#9E8FB2] text-[#9E8FB2] px-10 py-5 rounded-full font-bold text-xl hover:bg-[#F3F0F7] transition-all active:scale-95"
@@ -515,7 +520,7 @@ const App = () => {
         <button 
           onClick={() => {
              // Logic to open modal or scroll to contact form
-             window.open(`https://wa.me/972528327115?text=${encodeURIComponent('היי ד"ר רינת, אשמח לפרטים לגבי ייעוץ...')}`, '_blank');
+             window.open('https://wa.me/972528327115', '_blank');
           }}
           className="w-1/2 h-full bg-white text-[#2E2A35] font-bold text-xl active:bg-[#F3F0F7] transition-all"
         >
@@ -527,4 +532,4 @@ const App = () => {
   );
 };
 
-export default App;
+export default App; 
