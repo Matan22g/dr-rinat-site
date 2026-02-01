@@ -45,6 +45,57 @@ const TRUST_ITEMS = [
   { icon: Heart, label: "יחס אישי ומקצועי" }
 ];
 
+// --- Social Icons Components ---
+const InstagramIcon = ({ size = 24, className }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
+    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+    <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
+  </svg>
+);
+
+const FacebookIcon = ({ size = 24, className }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
+  </svg>
+);
+
+const TiktokIcon = ({ size = 24, className }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5" />
+  </svg>
+);
+
+const WhatsappIcon = ({ size = 24, className }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M3 21l1.65-3.8a9 9 0 1 1 3.4 2.9L3 21" />
+    <path d="M16.6 14c-.2-.2-.5-.2-.7 0l-1.3 1.3c-.2.2-.5.2-.7 0-1.5-1.5-2.5-2.5-4-4-.2-.2-.2-.5 0-.7l1.3-1.3c.2-.2.2-.5 0-.7l-2-2c-.2-.2-.5-.2-.7 0l-1.3 1.3c-.5.5-.5 1.3 0 1.8 2.5 2.5 5.5 5.5 8 8 .5.5 1.3.5 1.8 0l1.3-1.3c.2-.2.2-.5 0-.7l-2-2z" />
+  </svg>
+);
+
+const SOCIAL_LINKS = [
+  { 
+    name: 'Instagram', 
+    href: 'https://www.instagram.com/dr.rinat.ben_tovim?igsh=anR2ZGJ3OGZjZW40',
+    icon: InstagramIcon
+  },
+  { 
+    name: 'TikTok', 
+    href: 'https://vm.tiktok.com/ZS914c7urVaYS-ubEPV/',
+    icon: TiktokIcon
+  },
+  { 
+    name: 'Facebook', 
+    href: 'https://www.facebook.com/share/1AR4ZHCoSX/',
+    icon: FacebookIcon
+  },
+  { 
+    name: 'WhatsApp', 
+    href: 'https://wa.me/972528327115',
+    icon: WhatsappIcon
+  }
+];
+
 const App = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
@@ -330,6 +381,23 @@ const App = () => {
               </a>
             ))}
           </div>
+
+          {/* Social Media Icons */}
+          <div className="flex justify-center gap-6 mb-10">
+            {SOCIAL_LINKS.map((social) => (
+              <a
+                key={social.name}
+                href={social.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-12 h-12 rounded-full bg-white border border-[#9E8FB2]/20 flex items-center justify-center text-[#9E8FB2] hover:bg-[#9E8FB2] hover:text-white transition-all duration-300 shadow-sm hover:shadow-md hover:-translate-y-1"
+                aria-label={social.name}
+              >
+                <social.icon size={20} />
+              </a>
+            ))}
+          </div>
+
           <p className="text-gray-400 text-sm">© 2026 כל הזכויות שמורות לד״ר רינת - רפואה אסתטית | עוצב באהבה</p>
         </div>
       </footer>
