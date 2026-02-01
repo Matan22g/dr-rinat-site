@@ -113,7 +113,7 @@ const TestimonialsSection = () => {
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.9, opacity: 0 }}
-                src={new URL(selectedProof, import.meta.url).href}
+                src={new URL(`./imgs/reviews/${selectedProof}`, import.meta.url).href}
                 alt="Original Review Screenshot"
                 className="max-w-full max-h-[85vh] rounded-xl shadow-2xl"
                 onClick={(e) => e.stopPropagation()}
