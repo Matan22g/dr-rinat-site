@@ -61,10 +61,16 @@ const App = () => {
   // --- 3. Smooth Scroll Handler ---
   const handleScrollTo = (e, href) => {
     e.preventDefault();
-    setIsMenuOpen(false); // Close mobile menu if open
-    const element = document.querySelector(href);
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth' });
+    
+    if (isMenuOpen) {
+      setIsMenuOpen(false);
+      setTimeout(() => {
+        const element = document.querySelector(href);
+        if (element) element.scrollIntoView({ behavior: 'smooth' });
+      }, 300);
+    } else {
+      const element = document.querySelector(href);
+      if (element) element.scrollIntoView({ behavior: 'smooth' });
     }
   };
 
@@ -75,7 +81,7 @@ const App = () => {
       {/* --- Header --- */}
       <header 
         className={`fixed top-0 w-full z-50 transition-all duration-300 ${
-          isScrolled 
+          isScrolled || isMenuOpen
             ? 'bg-[#FDFBFE]/95 backdrop-blur-md border-b border-[#F3F0F7] shadow-sm py-0' 
             : 'bg-transparent py-2'
         }`}
@@ -128,7 +134,7 @@ const App = () => {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="md:hidden bg-white border-b border-[#F3F0F7] overflow-hidden absolute w-full shadow-xl"
+              className="md:hidden bg-[#FDFBFE] border-b border-[#F3F0F7] overflow-hidden absolute w-full shadow-xl right-0 top-full"
             >
               <div className="px-4 pt-2 pb-8 space-y-2">
                 {NAV_LINKS.map((link) => (
