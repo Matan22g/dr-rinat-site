@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Menu, X, Phone, Calendar, Star, Sparkles, User, ShieldCheck, Heart, MessageCircle, Mail } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import webPro from './webPro.jpeg';
-import webAcd from './webAcd.JPG';
+import webPro from './imgs/webPro.jpeg';
+import webAcd from './imgs/webAcd.JPG';
 import ContactForm from './ContactForm';
+import BeforeAfterSection from './BeforeAfterSection';
+import galleryData from './imgs/before_after/gallery.json';
 
 // --- 1. Constants (Moved outside component to prevent re-creation) ---
 const BRAND_COLORS = {
@@ -99,10 +101,39 @@ const SOCIAL_LINKS = [
   }
 ];
 
+const CATEGORY_TITLES = {
+  lips: 'עיצוב שפתיים',
+  nose: 'פיסול אף',
+  jaw: 'קו לסת',
+  cheeks: 'עיצוב לחיים',
+  chin: 'עיצוב סנטר'
+};
+
 const App = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [selectedTreatment, setSelectedTreatment] = useState(null);
+  const [comparisonImages, setComparisonImages] = useState([]);
+
+  // --- Load Gallery Data ---
+  useEffect(() => {
+    const loadGallery = () => {
+      try {
+        const items = galleryData.slice(0, 5).map(item => ({
+          before: new URL(`./imgs/before_after/${item.before}`, import.meta.url).href,
+          after: new URL(`./imgs/before_after/${item.after}`, import.meta.url).href,
+          title: CATEGORY_TITLES[item.category] || 'תוצאה טבעית',
+          desc: 'החליקי לראות את השינוי'
+        }));
+        
+        setComparisonImages(items);
+      } catch (error) {
+        console.error('Error loading gallery:', error);
+      }
+    };
+
+    loadGallery();
+  }, []);
 
   // --- 2. Scroll Detection for Header Styling ---
   useEffect(() => {
@@ -359,6 +390,8 @@ const App = () => {
           </AnimatePresence>
         </div>
       </section>
+
+      {comparisonImages.length > 0 && <BeforeAfterSection images={comparisonImages} />}
 
       {/* --- About Section --- */}
       <section id="about" className="py-28 bg-[#2E2A35] text-white relative overflow-hidden scroll-mt-20">
