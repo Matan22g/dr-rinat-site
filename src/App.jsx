@@ -6,6 +6,7 @@ import webAcd from './imgs/webAcd.JPG';
 import ContactForm from './ContactForm';
 import BeforeAfterSection from './BeforeAfterSection';
 import galleryData from './imgs/before_after/gallery.json';
+import TestimonialsSection from './TestimonialsSection';
 
 // --- 1. Constants (Moved outside component to prevent re-creation) ---
 const BRAND_COLORS = {
@@ -18,6 +19,7 @@ const BRAND_COLORS = {
 const NAV_LINKS = [
   { name: 'אודות', href: '#about' },
   { name: 'טיפולים', href: '#treatments' },
+  { name: 'תוצאות', href: '#results' },
   { name: 'המלצות', href: '#testimonials' },
   { name: 'צור קשר', href: '#contact' },
 ];
@@ -392,6 +394,8 @@ const App = () => {
       </section>
 
       {comparisonImages.length > 0 && <BeforeAfterSection images={comparisonImages} />}
+
+      <TestimonialsSection />
 
       {/* --- About Section --- */}
       <section id="about" className="py-28 bg-[#2E2A35] text-white relative overflow-hidden scroll-mt-20">

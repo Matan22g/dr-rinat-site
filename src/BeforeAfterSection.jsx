@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { MoveHorizontal, ArrowLeft } from 'lucide-react';
 
 // --- Image Comparison Component ---
-const ImageComparison = ({ beforeImage, afterImage, beforeLabel = "לפני", afterLabel = "אחרי" }) => {
+export const ImageComparison = ({ beforeImage, afterImage, beforeLabel = "לפני", afterLabel = "אחרי" }) => {
   const [isResizing, setIsResizing] = useState(false);
   const [position, setPosition] = useState(50);
   const containerRef = useRef(null);
@@ -116,7 +116,7 @@ const ImageComparison = ({ beforeImage, afterImage, beforeLabel = "לפני", af
 // --- Main Section ---
 const BeforeAfterSection = ({ images }) => {
   return (
-    <section className="py-24 bg-white overflow-hidden">
+    <section id="results" className="py-24 bg-white overflow-hidden">
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-12 px-4">
           <h2 className="font-serif text-4xl md:text-5xl font-bold text-[#2E2A35] mb-4">תוצאות שמדברות בעד עצמן</h2>
@@ -144,10 +144,10 @@ const BeforeAfterSection = ({ images }) => {
         </div>
 
         <div className="text-center mt-8">
-          <button className="inline-flex items-center gap-2 text-[#A68AC2] font-bold text-lg hover:text-[#8D7FA3] transition-colors group">
+          <a href="gallery.html" className="inline-flex items-center gap-2 text-[#A68AC2] font-bold text-lg hover:text-[#8D7FA3] transition-colors group">
             לגלריה המלאה
             <ArrowLeft size={20} className="transition-transform group-hover:-translate-x-1" />
-          </button>
+          </a>
         </div>
       </div>
     </section>
