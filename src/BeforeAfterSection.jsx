@@ -72,10 +72,10 @@ export const ImageComparison = ({ beforeImage, afterImage, beforeLabel = "לפנ
         className="absolute inset-0 w-full h-full object-cover pointer-events-none"
       />
       
-      {/* Label for Before (Visible when slider is to the right) */}
-      <div 
+      {/* Label for Before (Visible when slider hasn't covered it yet) */}
+      <div
         className="absolute top-4 right-4 bg-black/30 backdrop-blur-sm text-white px-3 py-1 rounded-full text-sm font-bold z-10 transition-opacity duration-300"
-        style={{ opacity: position > 10 ? 1 : 0 }}
+        style={{ opacity: position < 90 ? 1 : 0 }}
       >
         {beforeLabel}
       </div>
@@ -91,10 +91,10 @@ export const ImageComparison = ({ beforeImage, afterImage, beforeLabel = "לפנ
           className="absolute inset-0 w-full h-full object-cover"
         />
         
-        {/* Label for After (Visible when slider is to the left) */}
-        <div 
+        {/* Label for After (Visible when slider reveals the After image) */}
+        <div
           className="absolute top-4 left-4 bg-[#A68AC2]/80 backdrop-blur-sm text-white px-3 py-1 rounded-full text-sm font-bold z-10 transition-opacity duration-300"
-          style={{ opacity: position < 90 ? 1 : 0 }}
+          style={{ opacity: position > 10 ? 1 : 0 }}
         >
           {afterLabel}
         </div>
