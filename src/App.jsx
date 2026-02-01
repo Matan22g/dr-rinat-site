@@ -24,17 +24,20 @@ const TREATMENTS = [
   { 
     title: 'פיסול פנים ועיצוב', 
     icon: Sparkles, 
-    desc: 'הדגשת תווי פנים, עיצוב קו לסת ועצמות לחיים בשיטות המתקדמות ביותר למראה הרמוני.' 
+    desc: 'הדגשת תווי פנים, עיצוב קו לסת ועצמות לחיים בשיטות המתקדמות ביותר למראה הרמוני.',
+    details: 'תהליך פיסול הפנים מתבצע באמצעות חומרי מילוי איכותיים (חומצה היאלורונית) המותאמים אישית למבנה הפנים שלך. הטיפול מאפשר להדגיש את עצמות הלחיים, לחדד את קו הלסת ולשפר את הפרופיל, תוך שמירה על מראה טבעי ולא "עשוי". התוצאה מיידית ונשמרת לאורך זמן.'
   },
   { 
     title: 'הזרקות אסתטיות', 
     icon: Heart, 
-    desc: 'טשטוש קמטי הבעה והחזרת נפחים שאבדו עם השנים, תוך שמירה על הבעה טבעית.' 
+    desc: 'טשטוש קמטי הבעה והחזרת נפחים שאבדו עם השנים, תוך שמירה על הבעה טבעית.',
+    details: 'שימוש בבוטוקס ובחומרי מילוי לטיפול בקמטים דינמיים (מצח, צידי העיניים) וקמטים סטטיים. המטרה היא לא "להקפיא" את הפנים, אלא לרענן את המראה, לפתוח את העיניים ולהחזיר לעור את החיוניות שאבדה לו, הכל במינון מדויק ובטוח.'
   },
   { 
     title: 'חידוש ושיפור מרקם העור', 
     icon: Star, 
-    desc: 'טיפולי מזותרפיה וסקין-בוסטרס להזנה עמוקה, זוהר ורעננות של עור הפנים.' 
+    desc: 'טיפולי מזותרפיה וסקין-בוסטרס להזנה עמוקה, זוהר ורעננות של עור הפנים.',
+    details: 'סדרת טיפולים שמטרתה לשפר את איכות העור מבפנים. באמצעות החדרת ויטמינים, מינרלים ולחות עמוקה, העור מקבל "בוסט" של זוהר (Glow), הופך לגמיש יותר, והמרקם משתפר פלאים. מצוין לפני אירועים או כטיפול תחזוקה שוטף.'
   },
 ];
 
@@ -99,6 +102,7 @@ const SOCIAL_LINKS = [
 const App = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [selectedTreatment, setSelectedTreatment] = useState(null);
 
   // --- 2. Scroll Detection for Header Styling ---
   useEffect(() => {
@@ -296,6 +300,7 @@ const App = () => {
               <motion.div 
                 key={i}
                 whileHover={{ y: -12 }}
+                onClick={() => setSelectedTreatment(t)}
                 className="group p-10 bg-[#FDFBFE] rounded-[40px] border border-[#F3F0F7] shadow-sm hover:shadow-2xl transition-all duration-500 text-center cursor-pointer"
               >
                 <div className="w-20 h-20 bg-[#F3F0F7] rounded-3xl flex items-center justify-center text-[#9E8FB2] mx-auto mb-8 group-hover:bg-[#9E8FB2] group-hover:text-white transition-colors duration-500">
@@ -307,6 +312,51 @@ const App = () => {
               </motion.div>
             ))}
           </div>
+
+          {/* --- Treatment Modal --- */}
+          <AnimatePresence>
+            {selectedTreatment && (
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-[60] flex items-center justify-center px-4 bg-black/60 backdrop-blur-sm"
+                onClick={() => setSelectedTreatment(null)}
+              >
+                <motion.div 
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.9, opacity: 0 }}
+                  onClick={(e) => e.stopPropagation()}
+                  className="bg-white rounded-[30px] p-8 md:p-12 max-w-2xl w-full relative shadow-2xl text-center"
+                >
+                  <button 
+                    onClick={() => setSelectedTreatment(null)}
+                    className="absolute top-6 left-6 text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <X size={32} />
+                  </button>
+                  
+                  <div className="w-20 h-20 bg-[#F3F0F7] rounded-3xl flex items-center justify-center text-[#9E8FB2] mx-auto mb-6">
+                    <selectedTreatment.icon size={40} />
+                  </div>
+                  <h3 className="font-serif text-3xl md:text-4xl font-bold text-[#2E2A35] mb-6">{selectedTreatment.title}</h3>
+                  <p className="text-gray-600 text-lg leading-relaxed mb-10">{selectedTreatment.details}</p>
+                  
+                  <button 
+                    onClick={() => {
+                      const message = `היי ד״ר רינת, ראיתי באתר את הטיפול ${selectedTreatment.title} ואשמח לקבל פרטים נוספים.`;
+                      window.open(`https://wa.me/972528327115?text=${encodeURIComponent(message)}`, '_blank');
+                    }}
+                    className="bg-[#25D366] text-white px-8 py-4 rounded-full font-bold text-xl hover:bg-[#1EBE57] transition-all shadow-lg hover:shadow-xl active:scale-95 flex items-center justify-center gap-3 mx-auto w-full md:w-auto"
+                  >
+                    <WhatsappIcon size={24} />
+                    אני מתעניינת בטיפול זה
+                  </button>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </section>
 
