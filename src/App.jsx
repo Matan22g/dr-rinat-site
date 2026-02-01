@@ -515,7 +515,7 @@ const App = () => {
         <button 
           onClick={() => {
              // Logic to open modal or scroll to contact form
-             window.open('https://wa.me/972528327115', '_blank');
+             window.open(`https://wa.me/972528327115?text=${encodeURIComponent('היי ד"ר רינת, אשמח לפרטים לגבי ייעוץ...')}`, '_blank');
           }}
           className="w-1/2 h-full bg-white text-[#2E2A35] font-bold text-xl active:bg-[#F3F0F7] transition-all"
         >
