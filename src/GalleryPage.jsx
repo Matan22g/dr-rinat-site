@@ -15,7 +15,8 @@ const CATEGORY_TITLES = {
   botox: 'טיפול בוטוקס',
   eyes: 'אזור העיניים',
   temples: 'מילוי רקות',
-  forehead: 'טיפול מצח'
+  forehead: 'טיפול מצח',
+  other: 'טיפולים אחרים'
 };
 
 const GalleryPage = () => {
@@ -40,14 +41,13 @@ const GalleryPage = () => {
       }));
   }, []);
 
-  const categories = useMemo(() => {
-    const uniqueCats = [...new Set(processedData.map(item => item.category))];
-    uniqueCats.sort();
-    return ['all', ...uniqueCats];
-  }, [processedData]);
+  const categories = ['all', 'lips', 'botox', 'other'];
 
   const filteredItems = useMemo(() => {
     if (filter === 'all') return processedData;
+    if (filter === 'other') {
+      return processedData.filter(item => item.category !== 'lips' && item.category !== 'botox');
+    }
     return processedData.filter(item => item.category === filter);
   }, [filter, processedData]);
 

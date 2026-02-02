@@ -24,6 +24,14 @@
     "hidden": false
   },
   {
+    "category": "face",
+    "id": "001",
+    "before": "face_001_before.webp",
+    "after": "face_001_after.webp",
+    "featured": true,
+    "hidden": false
+  },
+  {
     "category": "lips",
     "id": "007",
     "before": "lips_007_before.webp",
@@ -32,11 +40,11 @@
     "hidden": false
   },
   {
-    "category": "botox",
-    "id": "003",
-    "before": "botox_003_before.webp",
-    "after": "botox_003_after.webp",
-    "featured": true,
+    "category": "lips",
+    "id": "004",
+    "before": "lips_004_before.webp",
+    "after": "lips_004_after.webp",
+    "featured": false,
     "hidden": false
   },
   {
@@ -49,25 +57,17 @@
   },
   {
     "category": "botox",
-    "id": "004",
-    "before": "botox_004_before.webp",
-    "after": "botox_004_after.webp",
+    "id": "007",
+    "before": "botox_007_before.webp",
+    "after": "botox_007_after.webp",
     "featured": false,
     "hidden": false
   },
   {
     "category": "botox",
-    "id": "006",
-    "before": "botox_006_before.webp",
-    "after": "botox_006_after.webp",
-    "featured": false,
-    "hidden": false
-  },
-  {
-    "category": "face",
-    "id": "001",
-    "before": "face_001_before.webp",
-    "after": "face_001_after.webp",
+    "id": "008",
+    "before": "botox_008_before.webp",
+    "after": "botox_008_after.webp",
     "featured": false,
     "hidden": false
   },
@@ -81,25 +81,17 @@
   },
   {
     "category": "botox",
-    "id": "008",
-    "before": "botox_008_before.webp",
-    "after": "botox_008_after.webp",
-    "featured": false,
-    "hidden": false
-  },
-  {
-    "category": "jawline",
     "id": "001",
-    "before": "jawline_001_before.webp",
-    "after": "jawline_001_after.webp",
+    "before": "botox_001_before.webp",
+    "after": "botox_001_after.webp",
     "featured": false,
     "hidden": false
   },
   {
     "category": "botox",
-    "id": "001",
-    "before": "botox_001_before.webp",
-    "after": "botox_001_after.webp",
+    "id": "004",
+    "before": "botox_004_before.webp",
+    "after": "botox_004_after.webp",
     "featured": false,
     "hidden": false
   },
@@ -113,33 +105,17 @@
   },
   {
     "category": "botox",
-    "id": "007",
-    "before": "botox_007_before.webp",
-    "after": "botox_007_after.webp",
+    "id": "006",
+    "before": "botox_006_before.webp",
+    "after": "botox_006_after.webp",
     "featured": false,
     "hidden": false
   },
   {
-    "category": "lips",
+    "category": "botox",
     "id": "003",
-    "before": "lips_003_before.webp",
-    "after": "lips_003_after.webp",
-    "featured": false,
-    "hidden": false
-  },
-  {
-    "category": "lips",
-    "id": "004",
-    "before": "lips_004_before.webp",
-    "after": "lips_004_after.webp",
-    "featured": false,
-    "hidden": false
-  },
-  {
-    "category": "lips",
-    "id": "002",
-    "before": "lips_002_before.webp",
-    "after": "lips_002_after.webp",
+    "before": "botox_003_before.webp",
+    "after": "botox_003_after.webp",
     "featured": false,
     "hidden": false
   },
@@ -153,9 +129,33 @@
   },
   {
     "category": "lips",
+    "id": "003",
+    "before": "lips_003_before.webp",
+    "after": "lips_003_after.webp",
+    "featured": false,
+    "hidden": false
+  },
+  {
+    "category": "lips",
     "id": "006",
     "before": "lips_006_before.webp",
     "after": "lips_006_after.webp",
+    "featured": false,
+    "hidden": false
+  },
+  {
+    "category": "jawline",
+    "id": "001",
+    "before": "jawline_001_before.webp",
+    "after": "jawline_001_after.webp",
+    "featured": false,
+    "hidden": false
+  },
+  {
+    "category": "lips",
+    "id": "002",
+    "before": "lips_002_before.webp",
+    "after": "lips_002_after.webp",
     "featured": false,
     "hidden": false
   },
