@@ -1,46 +1,58 @@
-import React, { useState, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState, useMemo, useEffect } from 'react';
 import { ArrowRight } from 'lucide-react';
 import { ImageComparison } from './BeforeAfterSection';
 import galleryData from './imgs/before_after/gallery.json';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const CATEGORY_TITLES = {
   lips: 'עיצוב שפתיים',
   nose: 'פיסול אף',
-  jaw: 'קו לסת',
-  cheeks: 'עיצוב לחיים',
+  jawline: 'קו לסת',
   chin: 'עיצוב סנטר',
-  botox: 'בוטוקס'
+  cheeks: 'עיצוב לחיים',
+  face: 'פיסול פנים',
+  face_sculpting: 'פיסול פנים',
+  botox: 'טיפול בוטוקס',
+  eyes: 'אזור העיניים',
+  temples: 'מילוי רקות',
+  forehead: 'טיפול מצח'
 };
 
 const GalleryPage = () => {
   const [filter, setFilter] = useState('all');
 
-  // 1. Process data to resolve image paths using Vite's URL handling
+  // --- 1. Scroll Reset Fix ---
+  // Whenever the filter changes, check if we are scrolled down.
+  // If so, scroll back up to the top of the results.
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [filter]);
+
   const processedData = useMemo(() => {
-    return galleryData.map(item => ({
-      ...item,
-      beforeSrc: new URL(`./imgs/before_after/${item.before}`, import.meta.url).href,
-      afterSrc: new URL(`./imgs/before_after/${item.after}`, import.meta.url).href,
-      displayTitle: CATEGORY_TITLES[item.category] || item.category
-    }));
+    return galleryData
+      .filter(item => !item.hidden)
+      .map(item => ({
+        ...item,
+        uniqueKey: `${item.category}-${item.id}`, 
+        beforeSrc: new URL(`./imgs/before_after/${item.before}`, import.meta.url).href,
+        afterSrc: new URL(`./imgs/before_after/${item.after}`, import.meta.url).href,
+        displayTitle: CATEGORY_TITLES[item.category] || item.category 
+      }));
   }, []);
 
-  // 2. Extract unique categories for filter buttons
   const categories = useMemo(() => {
     const uniqueCats = [...new Set(processedData.map(item => item.category))];
+    uniqueCats.sort();
     return ['all', ...uniqueCats];
   }, [processedData]);
 
-  // 3. Filter items based on selection
   const filteredItems = useMemo(() => {
     if (filter === 'all') return processedData;
     return processedData.filter(item => item.category === filter);
   }, [filter, processedData]);
 
   return (
-    <div dir="rtl" className="min-h-screen bg-white text-[#2E2A35] font-sans">
-      {/* Header */}
+    <div dir="rtl" className="min-h-screen bg-[#FDFBFE] text-[#2E2A35] font-sans">
       <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-[#F3F0F7] shadow-sm">
         <div className="max-w-7xl mx-auto px-4 h-20 flex items-center justify-between">
           <a href="/" className="flex items-center gap-2 text-[#9E8FB2] hover:text-[#2E2A35] transition-colors font-medium">
@@ -64,9 +76,9 @@ const GalleryPage = () => {
               <button
                 key={cat}
                 onClick={() => setFilter(cat)}
-                className={`px-6 py-2 rounded-full border transition-all duration-300 font-medium ${
+                className={`px-6 py-2 rounded-full border transition-all duration-300 font-medium text-lg ${
                   filter === cat
-                    ? 'bg-[#A68AC2] border-[#A68AC2] text-white shadow-md'
+                    ? 'bg-[#A68AC2] border-[#A68AC2] text-white shadow-md transform scale-105'
                     : 'bg-transparent border-[#A68AC2] text-[#A68AC2] hover:bg-[#A68AC2] hover:text-white'
                 }`}
               >
@@ -76,24 +88,28 @@ const GalleryPage = () => {
           </div>
         </div>
 
-        {/* Gallery Grid */}
+        {/* --- 2. Height Fix --- */}
+        {/* We removed 'layout' from this parent div. 
+            This forces the grid to collapse INSTANTLY to the new height, removing the empty space. */}
         <motion.div 
-          layout
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-12 items-start"
         >
           <AnimatePresence mode="popLayout">
             {filteredItems.map((item) => (
               <motion.div
-                key={item.id}
-                layout
-                initial={{ opacity: 0, scale: 0.9 }}
+                key={item.uniqueKey} 
+                layout // Keep layout here for the items to shuffle nicely
+                initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
+                exit={{ opacity: 0, scale: 0.8 }}
                 transition={{ duration: 0.3 }}
-                className="flex flex-col gap-3"
+                className="flex flex-col gap-4 group"
               >
                 <ImageComparison beforeImage={item.beforeSrc} afterImage={item.afterSrc} />
-                <p className="text-center text-gray-500 font-medium">{item.displayTitle}</p>
+                
+                <div className="text-center">
+                  <p className="text-[#2E2A35] font-bold text-xl">{item.displayTitle}</p>
+                </div>
               </motion.div>
             ))}
           </AnimatePresence>

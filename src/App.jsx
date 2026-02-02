@@ -117,9 +117,15 @@ const SOCIAL_LINKS = [
 const CATEGORY_TITLES = {
   lips: 'עיצוב שפתיים',
   nose: 'פיסול אף',
-  jaw: 'קו לסת',
+  jawline: 'קו לסת',       // Updated from 'jaw'
+  chin: 'עיצוב סנטר',
   cheeks: 'עיצוב לחיים',
-  chin: 'עיצוב סנטר'
+  face: 'פיסול פנים',
+  face_sculpting: 'פיסול פנים',
+  botox: 'טיפול בוטוקס',
+  eyes: 'אזור העיניים',
+  temples: 'מילוי רקות',
+  forehead: 'טיפול מצח'
 };
 
 const App = () => {
@@ -128,14 +134,21 @@ const App = () => {
   const [selectedTreatment, setSelectedTreatment] = useState(null);
   const [comparisonImages, setComparisonImages] = useState([]);
 
-  // --- Load Gallery Data ---
+// --- Load Gallery Data ---
   useEffect(() => {
     const loadGallery = () => {
       try {
-        const items = galleryData.slice(0, 5).map(item => ({
+        // FILTER: Keep only items where featured is true AND hidden is false
+        // The order is preserved automatically from the JSON file
+        const featuredItems = galleryData.filter(item => item.featured === true && !item.hidden);
+
+        const items = featuredItems.map(item => ({
+          // Dynamic image loading (Vite/Webpack compatible)
           before: new URL(`./imgs/before_after/${item.before}`, import.meta.url).href,
           after: new URL(`./imgs/before_after/${item.after}`, import.meta.url).href,
-          title: CATEGORY_TITLES[item.category] || 'תוצאה טבעית',
+          
+          // Use mapped title or fallback to category name
+          title: CATEGORY_TITLES[item.category] || item.category, 
           desc: 'החליקי לראות את השינוי'
         }));
         
@@ -147,7 +160,7 @@ const App = () => {
 
     loadGallery();
   }, []);
-
+  
   // --- 2. Scroll Detection for Header Styling ---
   useEffect(() => {
     const handleScroll = () => {
