@@ -32,7 +32,7 @@ const TREATMENTS = [
     details: 'תהליך פיסול הפנים מתבצע באמצעות חומרי מילוי איכותיים (חומצה היאלורונית) המותאמים אישית למבנה הפנים שלך. הטיפול מאפשר להדגיש את עצמות הלחיים, לחדד את קו הלסת ולשפר את הפרופיל, תוך שמירה על מראה טבעי ולא "עשוי". התוצאה מיידית ונשמרת לאורך זמן.'
   },
   { 
-    title: 'הזרקות אסתטיות', 
+    title: 'מילוי ועיצוב שפתיים', 
     icon: Heart, 
     desc: 'טשטוש קמטי הבעה והחזרת נפחים שאבדו עם השנים, תוך שמירה על הבעה טבעית.',
     details: 'שימוש בבוטוקס ובחומרי מילוי לטיפול בקמטים דינמיים (מצח, צידי העיניים) וקמטים סטטיים. המטרה היא לא "להקפיא" את הפנים, אלא לרענן את המראה, לפתוח את העיניים ולהחזיר לעור את החיוניות שאבדה לו, הכל במינון מדויק ובטוח.'
@@ -46,7 +46,7 @@ const TREATMENTS = [
 ];
 
 const TRUST_ITEMS = [
-  { icon: User, label: "צוות רפואי מנוסה" },
+  { icon: User, label: "רופאה מנוסה" },
   { icon: ShieldCheck, label: "חומרי טיפול מובילים" },
   { icon: Sparkles, label: "תוצאות טבעיות" },
   { icon: Heart, label: "יחס אישי ומקצועי" }
@@ -328,7 +328,7 @@ const App = () => {
       <section id="treatments" className="py-28 bg-white scroll-mt-20">
         <div className="max-w-7xl mx-auto px-4">
           <div className="text-center mb-20">
-            <h2 className="font-serif text-4xl md:text-6xl font-bold text-[#2E2A35] mb-6">הטיפולים שלנו</h2>
+            <h2 className="font-serif text-4xl md:text-6xl font-bold text-[#2E2A35] mb-6">הטיפולים שלי</h2>
             <div className="w-24 h-1 bg-[#9E8FB2] mx-auto rounded-full"></div>
             <p className="mt-8 text-xl text-gray-500 max-w-2xl mx-auto">מגוון פתרונות אסתטיים מתקדמים המותאמים אישית למבנה הפנים ולצרכים שלך.</p>
           </div>

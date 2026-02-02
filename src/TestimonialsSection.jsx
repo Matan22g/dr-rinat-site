@@ -79,19 +79,6 @@ const TestimonialsSection = () => {
           ))}
         </div>
 
-        {/* Social Proof Footer */}
-        <div className="text-center mt-16">
-          <a 
-            href="https://www.instagram.com/dr.rinat.ben_tovim?igsh=anR2ZGJ3OGZjZW40" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-3 px-8 py-4 rounded-full border-2 border-[#A68AC2] text-[#A68AC2] font-bold hover:bg-[#A68AC2] hover:text-white transition-all duration-300 group"
-          >
-            <Instagram size={24} />
-            לעוד עשרות המלצות מצולמות בהיילייטס באינסטגרם
-          </a>
-        </div>
-
         {/* Lightbox Modal */}
         <AnimatePresence>
           {selectedProof && (
