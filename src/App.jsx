@@ -100,6 +100,11 @@ const SOCIAL_LINKS = [
     name: 'WhatsApp', 
     href: 'https://wa.me/972528327115',
     icon: WhatsappIcon
+  },
+  {
+    name: 'Mail',
+    href: 'mailto:dr.rinatbt@gmail.com',
+    icon: Mail
   }
 ];
 
@@ -438,17 +443,7 @@ const App = () => {
               </p>
             </div>
             
-            <div className="mt-12 pt-12 border-t border-white/10">
-              <a href="mailto:dr.rinatbt@gmail.com" className="flex items-center gap-5 group cursor-pointer">
-                <div className="w-12 h-12 rounded-full bg-[#9E8FB2]/20 flex items-center justify-center text-[#9E8FB2] group-hover:bg-[#9E8FB2] group-hover:text-white transition-colors">
-                  <Mail size={24} />
-                </div>
-                <div>
-                  <p className="text-sm text-gray-400">דואר אלקטרוני</p>
-                  <p className="text-xl font-bold group-hover:text-[#9E8FB2] transition-colors">dr.rinatbt@gmail.com</p>
-                </div>
-              </a>
-            </div>
+            
           </motion.div>
         </div>
       </section>
