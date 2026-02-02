@@ -21,7 +21,6 @@ const NAV_LINKS = [
   { name: 'טיפולים', href: '#treatments' },
   { name: 'תוצאות', href: '#results' },
   { name: 'המלצות', href: '#testimonials' },
-  { name: 'צור קשר', href: '#contact' },
 ];
 
 const TREATMENTS = [
@@ -221,8 +220,10 @@ const App = () => {
                   <span className="absolute -bottom-1 right-0 w-0 h-0.5 bg-[#9E8FB2] transition-all group-hover:w-full"></span>
                 </a>
               ))}
-              <button className="bg-[#9E8FB2] text-white px-6 py-2.5 rounded-full hover:bg-[#8D7FA3] transition-all font-bold shadow-lg shadow-[#9E8FB2]/20 mr-4 active:scale-95 transform">
-                תיאום ייעוץ
+              <button
+                onClick={(e) => handleScrollTo(e, '#contact')}
+                className="bg-[#9E8FB2] text-white px-6 py-2.5 rounded-full hover:bg-[#8D7FA3] transition-all font-bold shadow-lg shadow-[#9E8FB2]/20 mr-4 active:scale-95 transform">
+                צרו קשר
               </button>
             </nav>
 
@@ -261,7 +262,7 @@ const App = () => {
                 ))}
                 <div className="pt-6 px-4">
                   <button className="w-full bg-[#9E8FB2] text-white px-6 py-4 rounded-full font-bold text-lg shadow-md active:scale-95 transition-transform">
-                   השאירי פרטים
+                   צרו קשר
                   </button>
                 </div>
               </div>
@@ -308,7 +309,7 @@ const App = () => {
                   href={`https://wa.me/972528327115?text=${encodeURIComponent('היי ד"ר רינת, אשמח לפרטים לגבי ייעוץ...')}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="bg-[#9E8FB2] text-white px-10 py-5 rounded-full font-bold text-xl hover:bg-[#8D7FA3] transition-all shadow-xl shadow-[#9E8FB2]/30 flex items-center justify-center gap-3 active:scale-95"
+                  className="bg-[#25D366] text-white px-10 py-5 rounded-full font-bold text-xl hover:bg-[#1EBE57] transition-all shadow-xl shadow-[#25D366]/30 flex items-center justify-center gap-3 active:scale-95"
                 >
                   <WhatsappIcon size={22} />
                   מעוניינת בעוד פרטים
