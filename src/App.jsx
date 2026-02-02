@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Menu, X, Phone, Calendar, Star, Sparkles, User, ShieldCheck, Heart, MessageCircle, Mail } from 'lucide-react';
+import { Menu, X, Calendar, Sparkles, User, ShieldCheck, Heart, Mail, 
+  Syringe, 
+  Dna, 
+  Eye, 
+  Droplets } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import webPro from './imgs/webPro.jpeg';
 import webAcd from './imgs/webAcd.JPG';
@@ -7,7 +11,8 @@ import ContactForm from './ContactForm';
 import BeforeAfterSection from './BeforeAfterSection';
 import galleryData from './imgs/before_after/gallery.json';
 import TestimonialsSection from './TestimonialsSection';
-
+import { GiLips } from "react-icons/gi";
+import ladyFaceSrc from './imgs/icons/lady_face.svg';
 // --- 1. Constants (Moved outside component to prevent re-creation) ---
 const BRAND_COLORS = {
   primary: '#9E8FB2',
@@ -22,26 +27,52 @@ const NAV_LINKS = [
   { name: 'תוצאות', href: '#results' },
   { name: 'המלצות', href: '#testimonials' },
 ];
-
+// Wrapper to make the SVG file behave like a Lucide icon
+const FaceIcon = ({ size = 24, className }) => (
+  <img 
+    src={ladyFaceSrc} 
+    alt="Face Sculpting" 
+    style={{ width: size, height: size }} 
+    className={className} 
+  />
+);
 const TREATMENTS = [
   { 
     title: 'פיסול פנים ועיצוב', 
-    icon: Sparkles, 
-    desc: 'הדגשת תווי פנים, עיצוב קו לסת ועצמות לחיים בשיטות המתקדמות ביותר למראה הרמוני.',
-    details: 'תהליך פיסול הפנים מתבצע באמצעות חומרי מילוי איכותיים (חומצה היאלורונית) המותאמים אישית למבנה הפנים שלך. הטיפול מאפשר להדגיש את עצמות הלחיים, לחדד את קו הלסת ולשפר את הפרופיל, תוך שמירה על מראה טבעי ולא "עשוי". התוצאה מיידית ונשמרת לאורך זמן.'
+    icon: FaceIcon, 
+    desc: 'טיפול שמטרתו להדגיש קווי מתאר, לשפר פרופורציות ולהרים אזורים שצנחו עם הזמן.',
+    details: 'טיפול שמטרתו להדגיש קווי מתאר, לשפר פרופורציות ולהרים אזורים שצנחו עם הזמן. מתאים לעצמות לחיים, סנטר, קו לסת, רקות ולעיתים גם קווי קמט עמוקים.\nהמטרה היא יצירת מראה מורם, הרמוני וטבעי, ללא נפח מיותר.\nאני משתמשת בחומצות היאלורוניות של Saypha, עם חומרים ייעודיים לפיסול פנים.\nמדובר בחומר מרים וחזק, שנותן תמיכה טובה לרקמה.\nהחומר מרים אזורים שצריך, מבלי ליצור נפיחויות מיותרות. הטיפול מותאם אישית למבנה הפנים.\nלפי מחקרים, משך ההחזקה לרוב בין 12–18 חודשים ואף יותר.\nהתוצאה - מראה טבעי, מורם ורענן לאורך זמן.'
   },
   { 
     title: 'מילוי ועיצוב שפתיים', 
-    icon: Heart, 
-    desc: 'טשטוש קמטי הבעה והחזרת נפחים שאבדו עם השנים, תוך שמירה על הבעה טבעית.',
-    details: 'שימוש בבוטוקס ובחומרי מילוי לטיפול בקמטים דינמיים (מצח, צידי העיניים) וקמטים סטטיים. המטרה היא לא "להקפיא" את הפנים, אלא לרענן את המראה, לפתוח את העיניים ולהחזיר לעור את החיוניות שאבדה לו, הכל במינון מדויק ובטוח.'
+    icon: GiLips, 
+    desc: 'טיפול עדין שמטרתו להדגיש את צורת השפה הטבעית, לשפר סימטריה ולהוסיף נפח בצורה הרמונית.',
+    details: 'טיפול עדין שמטרתו להדגיש את צורת השפה הטבעית, לשפר סימטריה ולהוסיף נפח בצורה הרמונית. מתאים לשפתיים דקות, א-סימטריות או לשיפור קווי מתאר.\nהטיפול מאפשר גם ריכוך קמטים עדינים סביב הפה. מבוצע בהתאמה אישית למבנה הפנים ולרצון המטופלת. ללא מראה מוגזם, דגש על תוצאה טבעית.\nאני עובדת עם חומצות היאלורוניות איכותיות של Saypha. חומרים אירופאיים, מאושרי משרד הבריאות.\nפרופיל בטיחות גבוה ומרקם רך.\nלפי מחקרים, התוצאה מחזיקה לרוב בין 9–12 חודשים.\nתוצאות יפות, טבעיות ועמידות לאורך זמן.'
   },
   { 
-    title: 'חידוש ושיפור מרקם העור', 
-    icon: Star, 
-    desc: 'טיפולי מזותרפיה וסקין-בוסטרס להזנה עמוקה, זוהר ורעננות של עור הפנים.',
-    details: 'סדרת טיפולים שמטרתה לשפר את איכות העור מבפנים. באמצעות החדרת ויטמינים, מינרלים ולחות עמוקה, העור מקבל "בוסט" של זוהר (Glow), הופך לגמיש יותר, והמרקם משתפר פלאים. מצוין לפני אירועים או כטיפול תחזוקה שוטף.'
+    title: 'בוטוקס (דיספורט)', 
+    icon: Syringe, 
+    desc: 'טיפול להפחתת קמטי הבעה ולקבלת מראה רענן וחלק יותר.',
+    details: 'טיפול להפחתת קמטי הבעה ולקבלת מראה רענן וחלק יותר.\nמתאים למצח, בין הגבות, צידי העיניים ואזורים נוספים.\nהטיפול מרפה זמנית את פעילות השריר, וכך מונע העמקה של קמטים קיימים והיווצרות קמטים חדשים.\nאני משתמשת ב Dysport. טוקסין סטנדרטי ואיכותי, מאושר משרד הבריאות.\nתחילת השפעה לרוב לאחר 3–7 ימים.\nתוצאה מלאה לאחר כשבועיים.\nמשך ההשפעה לרוב בין 3–5 חודשים.\nהתאמה אישית של אזורים ומינון לפי מבנה הפנים והצורך.'
   },
+  { 
+    title: 'פולינוקלאוטידים (טיפול סלמון)', 
+    icon: Dna, 
+    desc: 'טיפול ביולוגי שמטרתו לשקם ולשפר את איכות העור ברמה התאית, בדגש על אזור העיניים.',
+    details: 'טיפול ביולוגי שמטרתו לשקם ולשפר את איכות העור ברמה התאית.\nמתאים במיוחד לאזורים בהם העור נהיה דק עם הזמן, בדגש על אזור מתחת לעיניים.\nניתן לבצע גם בשאר אזורי הפנים, אך הדגש העיקרי הוא מתחת לעיניים, שם העור מתייבש ונהיה דק מהר יותר.\nהטיפול מעודד שיקום, אלסטיות ויצירת קולגן. מבוסס על סדרה של שלושה טיפולים.\nלפי מחקרים, האפקט מחזיק לרוב בין 6–12 חודשים לאחר השלמת הסדרה.\nהמטרה - עור חזק יותר, עבה יותר ואיכותי יותר.'
+  },
+  { 
+    title: 'מילוי שקעי עיניים', 
+    icon: Eye, 
+    desc: 'טיפול ייעודי לשיפור שקעים, כהויות ומראה עייף באזור העדין שמתחת לעיניים.',
+    details: 'טיפול שמטרתו לשפר שקעים, כהויות, מראה עייף ומרקם עור באזור שמתחת לעיניים.\nמדובר באזור עדין במיוחד, עם עור דק, כלי דם רבים ורקמה רגישה. בגלל הרגישות, רופאים רבים נמנעים מלטפל באזור זה.\nאני משתמשת ב-Redensity 2, חומר ייעודי לאזור מתחת לעיניים שנחשב לאחד הטובים והבטוחים ביותר, עם פרופיל סיבוכים נמוך במיוחד.\nהחומר נבחר במטרה להפחית סיכונים ולתת תוצאה טבעית ובטוחה.\nמתאים בעיקר לשקעים ולמראה עייף (לא מתאים לעודפי עור משמעותיים או שקיות שומן).\nלפי מחקרים, התוצאה מחזיקה לרוב בין 12–18 חודשים.\nהמטרה - מראה רענן, חיוני וטבעי, ללא נפח מיותר.'
+  },
+  { 
+    title: 'סקין בוסטר', 
+    icon: Droplets, 
+    desc: 'טיפול להחדרת לחות עמוקה, שיפור מרקם העור והענקת זוהר וגמישות.',
+    details: 'טיפול שמטרתו להחדיר לחות עמוקה לעור ולשפר את איכות העור מבפנים.\nהטיפול משפר מרקם, גמישות, זוהר ותחושת רכות בעור. מתאים לעור יבש, עייף או חסר חיוניות.\nניתן לבצע בפנים, בצוואר ובאזורים נוספים לפי הצורך.\nהטיפול מבוסס על סדרה של שלושה טיפולים בהפרשים קבועים, כשהמטרה היא בנייה הדרגתית של איכות העור.\nלפי מחקרים, האפקט מחזיק לרוב בין 6–12 חודשים לאחר השלמת הסדרה.\nהתוצאה - עור רווי בלחות, חיוני ובריא יותר.'
+  }
 ];
 
 const TRUST_ITEMS = [
@@ -261,9 +292,25 @@ const App = () => {
                   </a>
                 ))}
                 <div className="pt-6 px-4">
-                  <button className="w-full bg-[#9E8FB2] text-white px-6 py-4 rounded-full font-bold text-lg shadow-md active:scale-95 transition-transform">
+                  <button
+                    onClick={(e) => handleScrollTo(e, '#contact')}
+                   className="w-full bg-[#9E8FB2] text-white px-6 py-4 rounded-full font-bold text-lg shadow-md active:scale-95 transition-transform">
                    צרו קשר
                   </button>
+                </div>
+                <div className="flex justify-center gap-6 pt-8">
+                  {SOCIAL_LINKS.map((social) => (
+                    <a
+                      key={social.name}
+                      href={social.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-12 h-12 rounded-full bg-white border border-[#9E8FB2]/20 flex items-center justify-center text-[#9E8FB2] hover:bg-[#9E8FB2] hover:text-white transition-all duration-300 shadow-sm hover:shadow-md hover:-translate-y-1"
+                      aria-label={social.name}
+                    >
+                      <social.icon size={20} />
+                    </a>
+                  ))}
                 </div>
               </div>
             </motion.div>
@@ -532,15 +579,13 @@ const App = () => {
           <Calendar size={24} />
           השאירי פרטים
         </button>
-        <a
-          href="https://www.instagram.com/dr.rinat.ben_tovim?igsh=anR2ZGJ3OGZjZW40"
-          target="_blank"
-          rel="noopener noreferrer"
+        <button
+          onClick={(e) => handleScrollTo(e, '#results')}
           className="w-1/2 h-full bg-white text-[#2E2A35] font-bold text-xl active:bg-[#F3F0F7] transition-all flex items-center justify-center gap-3"
         >
-          <InstagramIcon size={24} />
-          אינסטגרם
-        </a>
+          <Sparkles size={24} />
+          תוצאות
+        </button>
       </div>
 
     </div>
