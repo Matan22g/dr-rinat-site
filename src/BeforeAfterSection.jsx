@@ -38,7 +38,6 @@ export const ImageComparison = ({
   }, []);
 
   const onMouseDown = () => setIsResizing(true);
-  const onMouseUp = () => setIsResizing(false);
   
   useEffect(() => {
     const handleGlobalUp = () => setIsResizing(false);
