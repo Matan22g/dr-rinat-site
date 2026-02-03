@@ -1,10 +1,30 @@
-import React, { useRef } from 'react';
-import { ArrowLeft, ChevronRight, ChevronLeft, MoveHorizontal } from 'lucide-react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { MoveHorizontal, ChevronRight, ChevronLeft, ArrowLeft } from 'lucide-react'; // Added icons to import
 import { Link } from 'react-router-dom';
-import { useState, useEffect, useCallback } from 'react';
 
-// --- Sub-Component: Image Comparison (The Slider) ---
-export const ImageComparison = ({ beforeImage, afterImage, beforeLabel = "לפני", afterLabel = "אחרי" }) => {
+// --- Internal Helper for Responsive Images (<picture>) ---
+const ResponsiveImage = ({ mobileSrc, desktopSrc, alt, className }) => {
+  if (!desktopSrc) {
+    // If no desktop version exists, just show the mobile/default one
+    return <img src={mobileSrc} alt={alt} className={className} draggable="false" />;
+  }
+  
+  return (
+    <picture>
+      {/* If screen is wider than 768px - load desktop image */}
+      <source media="(min-width: 768px)" srcSet={desktopSrc} />
+      {/* Otherwise - load mobile image */}
+      <img src={mobileSrc} alt={alt} className={className} draggable="false" />
+    </picture>
+  );
+};
+
+// --- Image Comparison Slider Component ---
+export const ImageComparison = ({ 
+  beforeImage, afterImage, 
+  beforeImageDesktop, afterImageDesktop, // Receiving new props
+  beforeLabel = "לפני", afterLabel = "אחרי" 
+}) => {
   const [isResizing, setIsResizing] = useState(false);
   const [position, setPosition] = useState(50);
   const containerRef = useRef(null);
@@ -20,11 +40,6 @@ export const ImageComparison = ({ beforeImage, afterImage, beforeLabel = "לפנ
   const onMouseDown = () => setIsResizing(true);
   const onMouseUp = () => setIsResizing(false);
   
-  // Touch logic
-  const onTouchStart = () => setIsResizing(true);
-  const onTouchEnd = () => setIsResizing(false);
-  
-  // Global event listeners
   useEffect(() => {
     const handleGlobalUp = () => setIsResizing(false);
     const handleGlobalMove = (e) => { if (isResizing) handleMove(e.clientX); };
@@ -47,25 +62,44 @@ export const ImageComparison = ({ beforeImage, afterImage, beforeLabel = "לפנ
   return (
     <div 
       ref={containerRef}
-      className="relative w-full aspect-[4/5] rounded-2xl overflow-hidden cursor-col-resize select-none shadow-lg border border-[#F3F0F7]"
+      // Dynamic Aspect Ratio: Mobile 4/5, Desktop 16/9 (only if desktop image exists)
+      className={`relative w-full rounded-2xl overflow-hidden cursor-col-resize select-none shadow-lg border border-[#F3F0F7] ${
+        beforeImageDesktop ? 'aspect-[4/5] md:aspect-video' : 'aspect-[4/5]'
+      }`}
       onMouseDown={onMouseDown}
-      onTouchStart={onTouchStart}
+      onTouchStart={() => setIsResizing(true)}
       style={{ touchAction: 'pan-y' }} 
     >
-      <img src={beforeImage} alt="Before" className="absolute inset-0 w-full h-full object-cover pointer-events-none" />
-      
-      <div className="absolute top-4 right-4 bg-black/30 backdrop-blur-sm text-white px-3 py-1 rounded-full text-sm font-bold z-10 transition-opacity duration-300" style={{ opacity: position < 90 ? 1 : 0 }}>
+       {/* 1. Base Image (Before) */}
+       <div className="absolute inset-0 w-full h-full">
+         <ResponsiveImage 
+            mobileSrc={beforeImage} 
+            desktopSrc={beforeImageDesktop} 
+            alt="Before" 
+            className="w-full h-full object-cover pointer-events-none" 
+         />
+       </div>
+       
+       <div className="absolute top-4 right-4 bg-black/30 backdrop-blur-sm text-white px-3 py-1 rounded-full text-sm font-bold z-10 transition-opacity duration-300" style={{ opacity: position < 90 ? 1 : 0 }}>
         {beforeLabel}
       </div>
 
-      <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none" style={{ clipPath: `inset(0 ${100 - position}% 0 0)` }}>
-        <img src={afterImage} alt="After" className="absolute inset-0 w-full h-full object-cover" />
-        <div className="absolute top-4 left-4 bg-[#A68AC2]/80 backdrop-blur-sm text-white px-3 py-1 rounded-full text-sm font-bold z-10 transition-opacity duration-300" style={{ opacity: position > 10 ? 1 : 0 }}>
+       {/* 2. Overlay Image (After) - Clipped */}
+       <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none" style={{ clipPath: `inset(0 ${100 - position}% 0 0)` }}>
+         <ResponsiveImage 
+            mobileSrc={afterImage} 
+            desktopSrc={afterImageDesktop} 
+            alt="After" 
+            className="w-full h-full object-cover" 
+         />
+         
+         <div className="absolute top-4 left-4 bg-[#A68AC2]/80 backdrop-blur-sm text-white px-3 py-1 rounded-full text-sm font-bold z-10 transition-opacity duration-300" style={{ opacity: position > 10 ? 1 : 0 }}>
           {afterLabel}
         </div>
-      </div>
+       </div>
 
-      <div className="absolute top-0 bottom-0 w-1 bg-white cursor-col-resize z-20 shadow-[0_0_10px_rgba(0,0,0,0.3)]" style={{ left: `${position}%` }}>
+       {/* Slider Handle */}
+       <div className="absolute top-0 bottom-0 w-1 bg-white cursor-col-resize z-20 shadow-[0_0_10px_rgba(0,0,0,0.3)]" style={{ left: `${position}%` }}>
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 bg-[#A68AC2] rounded-full flex items-center justify-center shadow-md border-2 border-white">
           <MoveHorizontal size={20} className="text-white" />
         </div>
@@ -142,7 +176,10 @@ const BeforeAfterSection = ({ images }) => {
                 <div className="shadow-lg rounded-2xl overflow-hidden border border-[#F3F0F7]">
                   <ImageComparison 
                     beforeImage={pair.beforeSrc || pair.before} 
-                    afterImage={pair.afterSrc || pair.after} 
+                    afterImage={pair.afterSrc || pair.after}
+                    // --- FIX: Passing the desktop props here ---
+                    beforeImageDesktop={pair.beforeDesktopSrc || pair.desktop_before} 
+                    afterImageDesktop={pair.afterDesktopSrc || pair.desktop_after} 
                   />
                 </div>
                 

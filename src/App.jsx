@@ -175,9 +175,13 @@ const App = () => {
 
         const items = featuredItems.map(item => ({
           // Dynamic image loading (Vite/Webpack compatible)
-          before: new URL(`./imgs/before_after/${item.before}`, import.meta.url).href,
-          after: new URL(`./imgs/before_after/${item.after}`, import.meta.url).href,
+        // Mobile (Always exists)
+          beforeSrc: new URL(`./imgs/before_after/${item.before}`, import.meta.url).href,
+          afterSrc: new URL(`./imgs/before_after/${item.after}`, import.meta.url).href,
           
+          // Desktop (Optional - check if string exists first)
+          beforeDesktopSrc: item.desktop_before ? new URL(`./imgs/before_after/${item.desktop_before}`, import.meta.url).href : null,
+          afterDesktopSrc: item.desktop_after ? new URL(`./imgs/before_after/${item.desktop_after}`, import.meta.url).href : null,          
           // Use mapped title or fallback to category name
           title: CATEGORY_TITLES[item.category] || item.category, 
           desc: 'החליקי לראות את השינוי'
@@ -328,7 +332,7 @@ const App = () => {
             {/* Placeholder for when you don't have the image file locally for this review */}
             <div className="w-full h-full bg-gray-200 absolute inset-0 animate-pulse" /> 
             <img 
-              src={webPro} // Restore your local image here
+              src={webPro}
               alt="Dr. Rinat Professional" 
               className="w-full h-full object-cover object-top shadow-lg md:shadow-none relative z-10"
             />

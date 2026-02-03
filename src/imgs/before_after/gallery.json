@@ -2,168 +2,210 @@
   {
     "category": "lips",
     "id": "008",
-    "before": "lips_008_before.webp",
-    "after": "lips_008_after.webp",
+    "before": "lips_008_mobile_before.webp",
+    "after": "lips_008_mobile_after.webp",
+    "desktop_before": "lips_008_desktop_before.webp",
+    "desktop_after": "lips_008_desktop_after.webp",
     "featured": true,
     "hidden": false
   },
   {
     "category": "botox",
     "id": "005",
-    "before": "botox_005_before.webp",
-    "after": "botox_005_after.webp",
+    "before": "botox_005_mobile_before.webp",
+    "after": "botox_005_mobile_after.webp",
+    "desktop_before": "botox_005_desktop_before.webp",
+    "desktop_after": "botox_005_desktop_after.webp",
     "featured": true,
     "hidden": false
   },
   {
     "category": "lips",
     "id": "009",
-    "before": "lips_009_before.webp",
-    "after": "lips_009_after.webp",
+    "before": "lips_009_mobile_before.webp",
+    "after": "lips_009_mobile_after.webp",
+    "desktop_before": "lips_009_desktop_before.webp",
+    "desktop_after": "lips_009_desktop_after.webp",
     "featured": true,
     "hidden": false
   },
   {
     "category": "face",
     "id": "001",
-    "before": "face_001_before.webp",
-    "after": "face_001_after.webp",
+    "before": "face_001_mobile_before.webp",
+    "after": "face_001_mobile_after.webp",
+    "desktop_before": "face_001_desktop_before.webp",
+    "desktop_after": "face_001_desktop_after.webp",
     "featured": true,
     "hidden": false
   },
   {
     "category": "lips",
     "id": "007",
-    "before": "lips_007_before.webp",
-    "after": "lips_007_after.webp",
+    "before": "lips_007_mobile_before.webp",
+    "after": "lips_007_mobile_after.webp",
+    "desktop_before": "lips_007_desktop_before.webp",
+    "desktop_after": "lips_007_desktop_after.webp",
     "featured": true,
     "hidden": false
   },
   {
-    "category": "lips",
+    "category": "botox",
     "id": "004",
-    "before": "lips_004_before.webp",
-    "after": "lips_004_after.webp",
-    "featured": false,
-    "hidden": false
-  },
-  {
-    "category": "lips",
-    "id": "001",
-    "before": "lips_001_before.webp",
-    "after": "lips_001_after.webp",
+    "before": "botox_004_mobile_before.webp",
+    "after": "botox_004_mobile_after.webp",
+    "desktop_before": "botox_004_desktop_before.webp",
+    "desktop_after": "botox_004_desktop_after.webp",
     "featured": false,
     "hidden": false
   },
   {
     "category": "botox",
     "id": "007",
-    "before": "botox_007_before.webp",
-    "after": "botox_007_after.webp",
+    "before": "botox_007_mobile_before.webp",
+    "after": "botox_007_mobile_after.webp",
+    "desktop_before": "botox_007_desktop_before.webp",
+    "desktop_after": "botox_007_desktop_after.webp",
+    "featured": false,
+    "hidden": false
+  },
+  {
+    "category": "lips",
+    "id": "004",
+    "before": "lips_004_mobile_before.webp",
+    "after": "lips_004_mobile_after.webp",
+    "desktop_before": "lips_004_desktop_before.webp",
+    "desktop_after": "lips_004_desktop_after.webp",
+    "featured": false,
+    "hidden": false
+  },
+  {
+    "category": "lips",
+    "id": "002",
+    "before": "lips_002_mobile_before.webp",
+    "after": "lips_002_mobile_after.webp",
+    "desktop_before": "lips_002_desktop_before.webp",
+    "desktop_after": "lips_002_desktop_after.webp",
+    "featured": false,
+    "hidden": false
+  },
+  {
+    "category": "jawline",
+    "id": "002",
+    "before": "jawline_002_mobile_before.webp",
+    "after": "jawline_002_mobile_after.webp",
+    "desktop_before": "jawline_002_desktop_before.webp",
+    "desktop_after": "jawline_002_desktop_after.webp",
+    "featured": false,
+    "hidden": false
+  },
+  {
+    "category": "botox",
+    "id": "002",
+    "before": "botox_002_mobile_before.webp",
+    "after": "botox_002_mobile_after.webp",
+    "desktop_before": "botox_002_desktop_before.webp",
+    "desktop_after": "botox_002_desktop_after.webp",
+    "featured": false,
+    "hidden": false
+  },
+  {
+    "category": "botox",
+    "id": "001",
+    "before": "botox_001_mobile_before.webp",
+    "after": "botox_001_mobile_after.webp",
+    "desktop_before": "botox_001_desktop_before.webp",
+    "desktop_after": "botox_001_desktop_after.webp",
+    "featured": false,
+    "hidden": false
+  },
+  {
+    "category": "botox",
+    "id": "006",
+    "before": "",
+    "after": "",
+    "desktop_before": "botox_006_desktop_before.webp",
+    "desktop_after": "botox_006_desktop_after.webp",
+    "featured": false,
+    "hidden": false
+  },
+  {
+    "category": "jawline",
+    "id": "001",
+    "before": "jawline_001_mobile_before.webp",
+    "after": "jawline_001_mobile_after.webp",
+    "desktop_before": "jawline_001_desktop_before.webp",
+    "desktop_after": "jawline_001_desktop_after.webp",
+    "featured": false,
+    "hidden": false
+  },
+  {
+    "category": "botox",
+    "id": "003",
+    "before": "botox_003_mobile_before.webp",
+    "after": "botox_003_mobile_after.webp",
+    "desktop_before": "botox_003_desktop_before.webp",
+    "desktop_after": "botox_003_desktop_after.webp",
     "featured": false,
     "hidden": false
   },
   {
     "category": "botox",
     "id": "008",
-    "before": "botox_008_before.webp",
-    "after": "botox_008_after.webp",
+    "before": "botox_008_mobile_before.webp",
+    "after": "botox_008_mobile_after.webp",
+    "desktop_before": "botox_008_desktop_before.webp",
+    "desktop_after": "botox_008_desktop_after.webp",
     "featured": false,
     "hidden": false
   },
   {
-    "category": "botox",
-    "id": "002",
-    "before": "botox_002_before.webp",
-    "after": "botox_002_after.webp",
-    "featured": false,
-    "hidden": false
-  },
-  {
-    "category": "botox",
-    "id": "001",
-    "before": "botox_001_before.webp",
-    "after": "botox_001_after.webp",
-    "featured": false,
-    "hidden": false
-  },
-  {
-    "category": "botox",
-    "id": "004",
-    "before": "botox_004_before.webp",
-    "after": "botox_004_after.webp",
-    "featured": false,
-    "hidden": false
-  },
-  {
-    "category": "jawline",
-    "id": "002",
-    "before": "jawline_002_before.webp",
-    "after": "jawline_002_after.webp",
-    "featured": false,
-    "hidden": false
-  },
-  {
-    "category": "botox",
+    "category": "lips",
     "id": "006",
-    "before": "botox_006_before.webp",
-    "after": "botox_006_after.webp",
+    "before": "lips_006_mobile_before.webp",
+    "after": "lips_006_mobile_after.webp",
+    "desktop_before": "lips_006_desktop_before.webp",
+    "desktop_after": "lips_006_desktop_after.webp",
     "featured": false,
     "hidden": false
   },
   {
-    "category": "botox",
+    "category": "lips",
     "id": "003",
-    "before": "botox_003_before.webp",
-    "after": "botox_003_after.webp",
+    "before": "lips_003_mobile_before.webp",
+    "after": "lips_003_mobile_after.webp",
+    "desktop_before": "lips_003_desktop_before.webp",
+    "desktop_after": "lips_003_desktop_after.webp",
     "featured": false,
     "hidden": false
   },
   {
     "category": "lips",
     "id": "005",
-    "before": "lips_005_before.webp",
-    "after": "lips_005_after.webp",
+    "before": "lips_005_mobile_before.webp",
+    "after": "lips_005_mobile_after.webp",
+    "desktop_before": "lips_005_desktop_before.webp",
+    "desktop_after": "lips_005_desktop_after.webp",
     "featured": false,
     "hidden": false
   },
   {
     "category": "lips",
-    "id": "003",
-    "before": "lips_003_before.webp",
-    "after": "lips_003_after.webp",
-    "featured": false,
-    "hidden": false
-  },
-  {
-    "category": "lips",
-    "id": "006",
-    "before": "lips_006_before.webp",
-    "after": "lips_006_after.webp",
-    "featured": false,
-    "hidden": false
-  },
-  {
-    "category": "jawline",
     "id": "001",
-    "before": "jawline_001_before.webp",
-    "after": "jawline_001_after.webp",
-    "featured": false,
-    "hidden": false
-  },
-  {
-    "category": "lips",
-    "id": "002",
-    "before": "lips_002_before.webp",
-    "after": "lips_002_after.webp",
+    "before": "lips_001_mobile_before.webp",
+    "after": "lips_001_mobile_after.webp",
+    "desktop_before": "lips_001_desktop_before.webp",
+    "desktop_after": "lips_001_desktop_after.webp",
     "featured": false,
     "hidden": false
   },
   {
     "category": "nose",
     "id": "001",
-    "before": "nose_001_before.webp",
-    "after": "nose_001_after.webp",
+    "before": "nose_001_mobile_before.webp",
+    "after": "nose_001_mobile_after.webp",
+    "desktop_before": "nose_001_desktop_before.webp",
+    "desktop_after": "nose_001_desktop_after.webp",
     "featured": false,
     "hidden": false
   }

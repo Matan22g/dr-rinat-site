@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { ArrowRight } from 'lucide-react';
-import { ImageComparison } from './BeforeAfterSection';
+import { Link } from 'react-router-dom';
+import { ImageComparison } from './BeforeAfterSection'; // ודא שזה הנתיב הנכון
 import galleryData from './imgs/before_after/gallery.json';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -22,21 +23,27 @@ const CATEGORY_TITLES = {
 const GalleryPage = () => {
   const [filter, setFilter] = useState('all');
 
-  // --- 1. Scroll Reset Fix ---
-  // Whenever the filter changes, check if we are scrolled down.
-  // If so, scroll back up to the top of the results.
+  // --- Scroll Reset Fix ---
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [filter]);
 
+  // 1. עיבוד הנתונים + חישוב נתיבי תמונות רספונסיביים
   const processedData = useMemo(() => {
     return galleryData
       .filter(item => !item.hidden)
       .map(item => ({
         ...item,
-        uniqueKey: `${item.category}-${item.id}`, 
+        uniqueKey: `${item.category}-${item.id}`,
+        
+        // Mobile (Always exists)
         beforeSrc: new URL(`./imgs/before_after/${item.before}`, import.meta.url).href,
         afterSrc: new URL(`./imgs/before_after/${item.after}`, import.meta.url).href,
+        
+        // Desktop (Check if exists first to avoid errors)
+        beforeDesktopSrc: item.desktop_before ? new URL(`./imgs/before_after/${item.desktop_before}`, import.meta.url).href : null,
+        afterDesktopSrc: item.desktop_after ? new URL(`./imgs/before_after/${item.desktop_after}`, import.meta.url).href : null,
+        
         displayTitle: CATEGORY_TITLES[item.category] || item.category 
       }));
   }, []);
@@ -55,10 +62,10 @@ const GalleryPage = () => {
     <div dir="rtl" className="min-h-screen bg-[#FDFBFE] text-[#2E2A35] font-sans">
       <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-[#F3F0F7] shadow-sm">
         <div className="max-w-7xl mx-auto px-4 h-20 flex items-center justify-between">
-          <a href="/" className="flex items-center gap-2 text-[#9E8FB2] hover:text-[#2E2A35] transition-colors font-medium">
+          <Link to="/" className="flex items-center gap-2 text-[#9E8FB2] hover:text-[#2E2A35] transition-colors font-medium">
             <ArrowRight size={20} />
             חזרה לדף הבית
-          </a>
+          </Link>
           <span className="font-serif text-2xl font-bold text-[#2E2A35]">
             Dr. Rinat <span className="text-[#9E8FB2]">Gallery</span>
           </span>
@@ -88,9 +95,6 @@ const GalleryPage = () => {
           </div>
         </div>
 
-        {/* --- 2. Height Fix --- */}
-        {/* We removed 'layout' from this parent div. 
-            This forces the grid to collapse INSTANTLY to the new height, removing the empty space. */}
         <motion.div 
           className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-12 items-start"
         >
@@ -98,17 +102,27 @@ const GalleryPage = () => {
             {filteredItems.map((item) => (
               <motion.div
                 key={item.uniqueKey} 
-                layout // Keep layout here for the items to shuffle nicely
+                layout
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.8 }}
                 transition={{ duration: 0.3 }}
                 className="flex flex-col gap-4 group"
               >
-                <ImageComparison beforeImage={item.beforeSrc} afterImage={item.afterSrc} />
+                <div className="shadow-sm hover:shadow-md transition-shadow duration-300 rounded-2xl overflow-hidden bg-white">
+                  <ImageComparison 
+                    beforeImage={item.beforeSrc} 
+                    afterImage={item.afterSrc}
+                    // מעביר את הנתונים החדשים לדסקטופ
+                    beforeImageDesktop={item.beforeDesktopSrc} 
+                    afterImageDesktop={item.afterDesktopSrc}   
+                  />                
+                </div>
                 
                 <div className="text-center">
                   <p className="text-[#2E2A35] font-bold text-xl">{item.displayTitle}</p>
+                  {/* אם תרצה להוסיף את המספר הסידורי לדיבאג, אפשר להוריד את ההערה */}
+                  {/* <p className="text-gray-400 text-sm">#{item.id}</p> */}
                 </div>
               </motion.div>
             ))}
