@@ -13,6 +13,7 @@ import galleryData from './imgs/before_after/gallery.json';
 import TestimonialsSection from './TestimonialsSection';
 import { GiLips } from "react-icons/gi";
 import ladyFaceSrc from './imgs/icons/lady_face.svg';
+
 // --- 1. Constants (Moved outside component to prevent re-creation) ---
 const BRAND_COLORS = {
   primary: '#9E8FB2',

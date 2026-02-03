@@ -1,45 +1,34 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { MoveHorizontal, ArrowLeft } from 'lucide-react';
+import React, { useRef } from 'react';
+import { ArrowLeft, ChevronRight, ChevronLeft, MoveHorizontal } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { useState, useEffect, useCallback } from 'react';
 
-// --- Image Comparison Component ---
+// --- Sub-Component: Image Comparison (The Slider) ---
 export const ImageComparison = ({ beforeImage, afterImage, beforeLabel = "לפני", afterLabel = "אחרי" }) => {
   const [isResizing, setIsResizing] = useState(false);
   const [position, setPosition] = useState(50);
   const containerRef = useRef(null);
 
-  // Handle movement (mouse or touch)
   const handleMove = useCallback((clientX) => {
     if (!containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
     const x = clientX - rect.left;
-    // Calculate percentage (0 to 100)
     const newPos = Math.min(100, Math.max(0, (x / rect.width) * 100));
     setPosition(newPos);
   }, []);
 
-  // Mouse events
   const onMouseDown = () => setIsResizing(true);
   const onMouseUp = () => setIsResizing(false);
-  const onMouseMove = (e) => {
-    if (isResizing) handleMove(e.clientX);
-  };
-
-  // Touch events
+  
+  // Touch logic
   const onTouchStart = () => setIsResizing(true);
   const onTouchEnd = () => setIsResizing(false);
-  const onTouchMove = (e) => {
-    if (isResizing) handleMove(e.touches[0].clientX);
-  };
-
-  // Global event listeners for drag end/move outside container
+  
+  // Global event listeners
   useEffect(() => {
     const handleGlobalUp = () => setIsResizing(false);
-    const handleGlobalMove = (e) => {
-      if (isResizing) handleMove(e.clientX);
-    };
-    const handleGlobalTouchMove = (e) => {
-      if (isResizing) handleMove(e.touches[0].clientX);
-    };
+    const handleGlobalMove = (e) => { if (isResizing) handleMove(e.clientX); };
+    const handleGlobalTouchMove = (e) => { if (isResizing) handleMove(e.touches[0].clientX); };
 
     if (isResizing) {
       window.addEventListener('mouseup', handleGlobalUp);
@@ -47,7 +36,6 @@ export const ImageComparison = ({ beforeImage, afterImage, beforeLabel = "לפנ
       window.addEventListener('touchend', handleGlobalUp);
       window.addEventListener('touchmove', handleGlobalTouchMove);
     }
-
     return () => {
       window.removeEventListener('mouseup', handleGlobalUp);
       window.removeEventListener('mousemove', handleGlobalMove);
@@ -59,52 +47,25 @@ export const ImageComparison = ({ beforeImage, afterImage, beforeLabel = "לפנ
   return (
     <div 
       ref={containerRef}
-      className="relative w-full aspect-[4/5] md:aspect-[3/2] rounded-2xl overflow-hidden cursor-col-resize select-none shadow-lg border border-[#F3F0F7]"
+      className="relative w-full aspect-[4/5] rounded-2xl overflow-hidden cursor-col-resize select-none shadow-lg border border-[#F3F0F7]"
       onMouseDown={onMouseDown}
       onTouchStart={onTouchStart}
-      // touch-action: pan-y allows vertical scroll but captures horizontal gestures for the slider
       style={{ touchAction: 'pan-y' }} 
     >
-      {/* 1. Base Image (Before) */}
-      <img 
-        src={beforeImage} 
-        alt="Before" 
-        className="absolute inset-0 w-full h-full object-cover pointer-events-none"
-      />
+      <img src={beforeImage} alt="Before" className="absolute inset-0 w-full h-full object-cover pointer-events-none" />
       
-      {/* Label for Before (Visible when slider hasn't covered it yet) */}
-      <div
-        className="absolute top-4 right-4 bg-black/30 backdrop-blur-sm text-white px-3 py-1 rounded-full text-sm font-bold z-10 transition-opacity duration-300"
-        style={{ opacity: position < 90 ? 1 : 0 }}
-      >
+      <div className="absolute top-4 right-4 bg-black/30 backdrop-blur-sm text-white px-3 py-1 rounded-full text-sm font-bold z-10 transition-opacity duration-300" style={{ opacity: position < 90 ? 1 : 0 }}>
         {beforeLabel}
       </div>
 
-      {/* 2. Overlay Image (After) - Clipped */}
-      <div 
-        className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none"
-        style={{ clipPath: `inset(0 ${100 - position}% 0 0)` }}
-      >
-        <img 
-          src={afterImage} 
-          alt="After" 
-          className="absolute inset-0 w-full h-full object-cover"
-        />
-        
-        {/* Label for After (Visible when slider reveals the After image) */}
-        <div
-          className="absolute top-4 left-4 bg-[#A68AC2]/80 backdrop-blur-sm text-white px-3 py-1 rounded-full text-sm font-bold z-10 transition-opacity duration-300"
-          style={{ opacity: position > 10 ? 1 : 0 }}
-        >
+      <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none" style={{ clipPath: `inset(0 ${100 - position}% 0 0)` }}>
+        <img src={afterImage} alt="After" className="absolute inset-0 w-full h-full object-cover" />
+        <div className="absolute top-4 left-4 bg-[#A68AC2]/80 backdrop-blur-sm text-white px-3 py-1 rounded-full text-sm font-bold z-10 transition-opacity duration-300" style={{ opacity: position > 10 ? 1 : 0 }}>
           {afterLabel}
         </div>
       </div>
 
-      {/* 3. Slider Handle */}
-      <div 
-        className="absolute top-0 bottom-0 w-1 bg-white cursor-col-resize z-20 shadow-[0_0_10px_rgba(0,0,0,0.3)]"
-        style={{ left: `${position}%` }}
-      >
+      <div className="absolute top-0 bottom-0 w-1 bg-white cursor-col-resize z-20 shadow-[0_0_10px_rgba(0,0,0,0.3)]" style={{ left: `${position}%` }}>
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 bg-[#A68AC2] rounded-full flex items-center justify-center shadow-md border-2 border-white">
           <MoveHorizontal size={20} className="text-white" />
         </div>
@@ -113,41 +74,114 @@ export const ImageComparison = ({ beforeImage, afterImage, beforeLabel = "לפנ
   );
 };
 
-// --- Main Section ---
+// --- Main Component: BeforeAfterSection ---
 const BeforeAfterSection = ({ images }) => {
+  const scrollRef = useRef(null);
+
+  // Logic to scroll the carousel programmatically
+  const scroll = (direction) => {
+    if (scrollRef.current) {
+      const { current } = scrollRef;
+      // Scroll amount: roughly one card width
+      const scrollAmount = window.innerWidth < 768 ? window.innerWidth * 0.85 : 500;
+      
+      if (direction === 'left') {
+        current.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+      } else {
+        current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+      }
+    }
+  };
+
   return (
-    <section id="results" className="py-24 bg-white overflow-hidden">
+    <section id="results" className="py-24 bg-white overflow-hidden relative">
       <div className="max-w-7xl mx-auto">
-        <div className="text-center mb-12 px-4">
+        <div className="text-center mb-10 px-4">
           <h2 className="font-serif text-4xl md:text-5xl font-bold text-[#2E2A35] mb-4">תוצאות שמדברות בעד עצמן</h2>
           <div className="w-20 h-1 bg-[#A68AC2] mx-auto rounded-full mb-6"></div>
-          <p className="text-gray-500 text-lg">החליקי את הסמן כדי לראות את השינוי</p>
+          <p className="text-gray-500 text-lg">
+            החליקי את התמונה כדי לראות את השינוי,<br className="md:hidden"/> או השתמשי בחיצים לדפדף
+          </p>
         </div>
 
-        {/* Carousel Container with Scroll Snap */}
-        <div className="flex overflow-x-auto snap-x snap-mandatory gap-6 pb-12 px-4 md:px-8 scrollbar-hide -mx-4 md:mx-0 before:content-[''] before:w-4 before:shrink-0 after:content-[''] after:w-4 after:shrink-0 md:before:hidden md:after:hidden">
-          {images.map((pair, index) => (
-            <div 
-              key={index} 
-              className="snap-center shrink-0 w-[85vw] md:w-[500px] flex flex-col"
-            >
-              <ImageComparison 
-                beforeImage={pair.before} 
-                afterImage={pair.after} 
-              />
-              <div className="mt-4 text-center">
-                <h3 className="font-bold text-[#2E2A35] text-xl">{pair.title}</h3>
-                <p className="text-gray-500 text-sm">{pair.desc}</p>
+        {/* --- CAROUSEL WRAPPER --- */}
+        <div className="relative group">
+          
+          {/* Desktop/Tablet Arrow: Right (Previous) */}
+          <button 
+            onClick={() => scroll('right')}
+            className="absolute right-2 top-1/2 -translate-y-1/2 z-10 bg-white/80 backdrop-blur-md p-3 rounded-full shadow-lg text-[#2E2A35] hover:bg-white transition-all hover:scale-110 hidden md:flex"
+            aria-label="Scroll Right"
+          >
+            <ChevronRight size={24} />
+          </button>
+
+          {/* Desktop/Tablet Arrow: Left (Next) */}
+          <button 
+            onClick={() => scroll('left')}
+            className="absolute left-2 top-1/2 -translate-y-1/2 z-10 bg-white/80 backdrop-blur-md p-3 rounded-full shadow-lg text-[#2E2A35] hover:bg-white transition-all hover:scale-110 hidden md:flex"
+            aria-label="Scroll Left"
+          >
+            <ChevronLeft size={24} />
+          </button>
+
+          {/* The Carousel */}
+          <div 
+            ref={scrollRef}
+            className="flex overflow-x-auto snap-x snap-mandatory gap-4 pb-12 px-4 md:px-8 scrollbar-hide -mx-4 md:mx-0"
+          >
+            {/* Spacer for mobile layout */}
+            <div className="w-2 shrink-0 md:hidden"></div>
+
+            {images.map((pair, index) => (
+              <div 
+                key={index} 
+                className="snap-center shrink-0 w-[85vw] md:w-[500px] flex flex-col"
+              >
+                {/* The Image Slider */}
+                <div className="shadow-lg rounded-2xl overflow-hidden border border-[#F3F0F7]">
+                  <ImageComparison 
+                    beforeImage={pair.beforeSrc || pair.before} 
+                    afterImage={pair.afterSrc || pair.after} 
+                  />
+                </div>
+                
+                {/* SAFE ZONE: Text area is draggable but text is not selectable */}
+                <div className="mt-4 text-center select-none py-4 cursor-grab active:cursor-grabbing">
+                  <h3 className="font-bold text-[#2E2A35] text-xl">{pair.title || pair.displayTitle}</h3>
+                  <p className="text-gray-500 text-sm">{pair.desc || "דפדפי למקרה הבא ->"}</p>
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+            
+            {/* Spacer for mobile layout */}
+            <div className="w-2 shrink-0 md:hidden"></div>
+          </div>
         </div>
 
-        <div className="text-center mt-8">
-          <a href="gallery.html" className="inline-flex items-center gap-2 text-[#A68AC2] font-bold text-lg hover:text-[#8D7FA3] transition-colors group">
+        {/* Mobile Navigation Buttons (Visible only on mobile) */}
+        <div className="flex justify-center gap-6 md:hidden -mt-6 mb-8">
+           <button 
+             onClick={() => scroll('right')} 
+             className="bg-[#F3F0F7] p-3 rounded-full text-[#9E8FB2] shadow-sm active:scale-95 border border-[#E5DEED]"
+             aria-label="Previous Image"
+           >
+             <ChevronRight size={24} />
+           </button>
+           <button 
+             onClick={() => scroll('left')} 
+             className="bg-[#F3F0F7] p-3 rounded-full text-[#9E8FB2] shadow-sm active:scale-95 border border-[#E5DEED]"
+             aria-label="Next Image"
+           >
+             <ChevronLeft size={24} />
+           </button>
+        </div>
+
+        <div className="text-center">
+          <Link to="/gallery.html" className="inline-flex items-center gap-2 text-[#A68AC2] font-bold text-lg hover:text-[#8D7FA3] transition-colors group">
             לגלריה המלאה
             <ArrowLeft size={20} className="transition-transform group-hover:-translate-x-1" />
-          </a>
+          </Link>
         </div>
       </div>
     </section>
