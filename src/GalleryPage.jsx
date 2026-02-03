@@ -1,6 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { ArrowRight } from 'lucide-react';
-import { Link } from 'react-router-dom';
 import { ImageComparison } from './BeforeAfterSection'; // ודא שזה הנתיב הנכון
 import galleryData from './imgs/before_after/gallery.json';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -62,10 +61,10 @@ const GalleryPage = () => {
     <div dir="rtl" className="min-h-screen bg-[#FDFBFE] text-[#2E2A35] font-sans">
       <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-[#F3F0F7] shadow-sm">
         <div className="max-w-7xl mx-auto px-4 h-20 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2 text-[#9E8FB2] hover:text-[#2E2A35] transition-colors font-medium">
+          <a href="/" className="flex items-center gap-2 text-[#9E8FB2] hover:text-[#2E2A35] transition-colors font-medium">
             <ArrowRight size={20} />
             חזרה לדף הבית
-          </Link>
+          </a>
           <span className="font-serif text-2xl font-bold text-[#2E2A35]">
             Dr. Rinat <span className="text-[#9E8FB2]">Gallery</span>
           </span>
