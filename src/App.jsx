@@ -168,6 +168,36 @@ const App = () => {
   const [isLegalModalOpen, setIsLegalModalOpen] = useState(false);
   const [legalModalSection, setLegalModalSection] = useState('');
 
+// --- Accessibility Script Loader ---
+  useEffect(() => {
+    const SCRIPT_ID = 'enable-accessibility-script';
+
+    if (document.getElementById(SCRIPT_ID)) return;
+
+    const isProduction = window.location.hostname !== 'localhost' && 
+                         window.location.hostname !== '127.0.0.1' &&
+                         !window.location.hostname.startsWith('192.168');
+
+    const script = document.createElement('script');
+    script.id = SCRIPT_ID;
+    script.async = true;
+    script.setAttribute('defer', '');
+
+    if (isProduction) {
+      script.src = "https://cdn.enable.co.il/licenses/enable-L53855ubcqjuewir-0226-79303/init.js";
+    } else {
+      script.src = "https://cdn.enable.co.il/licenses/enable-L53855ubcqjuewir-0226-79304/init.js";
+    }
+
+    document.body.appendChild(script);
+
+    return () => {
+      const existingScript = document.getElementById(SCRIPT_ID);
+      if (existingScript) {
+        document.body.removeChild(existingScript);
+      }
+    };
+  }, []);
 // --- Load Gallery Data ---
   useEffect(() => {
     const loadGallery = () => {
