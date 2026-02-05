@@ -11,6 +11,7 @@ import ContactForm from './ContactForm';
 import BeforeAfterSection from './BeforeAfterSection';
 import galleryData from './imgs/before_after/gallery.json';
 import TestimonialsSection from './TestimonialsSection';
+import LegalModal from './LegalModal';
 import { GiLips } from "react-icons/gi";
 import ladyFaceSrc from './imgs/icons/lady_face.svg';
 
@@ -164,6 +165,8 @@ const App = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [selectedTreatment, setSelectedTreatment] = useState(null);
   const [comparisonImages, setComparisonImages] = useState([]);
+  const [isLegalModalOpen, setIsLegalModalOpen] = useState(false);
+  const [legalModalSection, setLegalModalSection] = useState('');
 
 // --- Load Gallery Data ---
   useEffect(() => {
@@ -195,6 +198,11 @@ const App = () => {
 
     loadGallery();
   }, []);
+
+  const openLegalModal = (section) => {
+    setLegalModalSection(section);
+    setIsLegalModalOpen(true);
+  };
   
   // --- 2. Scroll Detection for Header Styling ---
   useEffect(() => {
@@ -558,8 +566,19 @@ const App = () => {
           </div>
 
           <p className="text-gray-400 text-sm">© 2026 כל הזכויות שמורות לד״ר רינת - רפואה אסתטית | עוצב באהבה</p>
+          <div className="mt-4 text-sm text-gray-400">
+            <button onClick={() => openLegalModal('accessibility')} className="underline hover:text-[#9E8FB2] transition-colors mx-2">הצהרת נגישות</button>
+            <span className="text-gray-300">|</span>
+            <button onClick={() => openLegalModal('terms')} className="underline hover:text-[#9E8FB2] transition-colors mx-2">תנאי שימוש</button>
+          </div>
         </div>
       </footer>
+
+      <LegalModal 
+        show={isLegalModalOpen} 
+        onClose={() => setIsLegalModalOpen(false)} 
+        section={legalModalSection} 
+      />
       
       {/* --- Floating Action Elements --- */}
       <motion.a 

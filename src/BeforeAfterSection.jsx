@@ -23,6 +23,7 @@ const ResponsiveImage = ({ mobileSrc, desktopSrc, alt, className }) => {
 export const ImageComparison = ({ 
   beforeImage, afterImage, 
   beforeImageDesktop, afterImageDesktop, // Receiving new props
+  title = "image",
   beforeLabel = "לפני", afterLabel = "אחרי" 
 }) => {
   const [isResizing, setIsResizing] = useState(false);
@@ -74,7 +75,7 @@ export const ImageComparison = ({
          <ResponsiveImage 
             mobileSrc={beforeImage} 
             desktopSrc={beforeImageDesktop} 
-            alt="Before" 
+            alt={`Before ${title} treatment`} 
             className="w-full h-full object-cover pointer-events-none" 
          />
        </div>
@@ -88,7 +89,7 @@ export const ImageComparison = ({
          <ResponsiveImage 
             mobileSrc={afterImage} 
             desktopSrc={afterImageDesktop} 
-            alt="After" 
+            alt={`After ${title} treatment`} 
             className="w-full h-full object-cover" 
          />
          
@@ -174,6 +175,7 @@ const BeforeAfterSection = ({ images }) => {
                 {/* The Image Slider */}
                 <div className="shadow-lg rounded-2xl overflow-hidden border border-[#F3F0F7]">
                   <ImageComparison 
+                    title={pair.title || pair.displayTitle}
                     beforeImage={pair.beforeSrc || pair.before} 
                     afterImage={pair.afterSrc || pair.after}
                     // --- FIX: Passing the desktop props here ---

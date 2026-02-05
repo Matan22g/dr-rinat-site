@@ -58,7 +58,7 @@ const TestimonialsSection = () => {
                       {/* View Original Button */}
                       {review.proof_image && (
                         <button 
-                          onClick={() => setSelectedProof(review.proof_image)}
+                          onClick={() => setSelectedProof(review)}
                           className="flex items-center gap-1 text-xs text-gray-400 hover:text-[#A68AC2] hover:underline transition-colors mt-1"
                         >
                           <Eye size={12} />
@@ -100,8 +100,8 @@ const TestimonialsSection = () => {
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.9, opacity: 0 }}
-                src={new URL(`./imgs/reviews/${selectedProof}`, import.meta.url).href}
-                alt="Original Review Screenshot"
+                src={new URL(`./imgs/reviews/${selectedProof.proof_image}`, import.meta.url).href}
+                alt={`Original review from ${selectedProof.name}`}
                 className="max-w-full max-h-[85vh] rounded-xl shadow-2xl"
                 onClick={(e) => e.stopPropagation()}
               />

@@ -110,6 +110,7 @@ const GalleryPage = () => {
               >
                 <div className="shadow-sm hover:shadow-md transition-shadow duration-300 rounded-2xl overflow-hidden bg-white">
                   <ImageComparison 
+                    title={item.displayTitle}
                     beforeImage={item.beforeSrc} 
                     afterImage={item.afterSrc}
                     // מעביר את הנתונים החדשים לדסקטופ
