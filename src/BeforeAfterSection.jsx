@@ -63,12 +63,9 @@ export const ImageComparison = ({
     <div 
       ref={containerRef}
       // Dynamic Aspect Ratio: Mobile 4/5, Desktop 16/9 (only if desktop image exists)
-      className={`relative w-full rounded-2xl overflow-hidden cursor-col-resize select-none shadow-lg border border-[#F3F0F7] ${
+      className={`relative w-full rounded-2xl overflow-hidden select-none shadow-lg border border-[#F3F0F7] ${
         beforeImageDesktop ? 'aspect-[4/5] md:aspect-video' : 'aspect-[4/5]'
       }`}
-      onMouseDown={onMouseDown}
-      onTouchStart={() => setIsResizing(true)}
-      style={{ touchAction: 'pan-y' }} 
     >
        {/* 1. Base Image (Before) */}
        <div className="absolute inset-0 w-full h-full">
@@ -98,12 +95,27 @@ export const ImageComparison = ({
         </div>
        </div>
 
-       {/* Slider Handle */}
-       <div className="absolute top-0 bottom-0 w-1 bg-white cursor-col-resize z-20 shadow-[0_0_10px_rgba(0,0,0,0.3)]" style={{ left: `${position}%` }}>
+      {/* Visible Slider Handle (no interaction) */}
+       <div 
+        className="absolute top-0 bottom-0 w-1 bg-white z-20 shadow-[0_0_10px_rgba(0,0,0,0.3)] pointer-events-none" 
+        style={{ left: `${position}%` }}>
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 bg-[#A68AC2] rounded-full flex items-center justify-center shadow-md border-2 border-white">
           <MoveHorizontal size={20} className="text-white" />
         </div>
       </div>
+
+      {/* --- INVISIBLE HIT AREA for slider activation --- */}
+      <div
+        className="absolute top-0 bottom-0 z-30"
+        style={{
+          left: `calc(${position}% - 20px)`, // Center the 40px hit area on the line
+          width: '40px',
+          cursor: 'col-resize',
+          touchAction: 'pan-y', // Allow vertical page scroll, but capture horizontal drag
+        }}
+        onMouseDown={onMouseDown}
+        onTouchStart={() => setIsResizing(true)}
+      />
     </div>
   );
 };
