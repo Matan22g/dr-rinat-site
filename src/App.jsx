@@ -523,7 +523,7 @@ const App = () => {
       <ContactForm />
 
       {/* --- Footer --- */}
-      <footer className="bg-[#FDFBFE] py-16 text-center border-t border-[#F3F0F7] pb-36 md:pb-16">
+      <footer className="bg-[#FDFBFE] py-16 text-center border-t border-[#F3F0F7] pb-24 md:pb-16">
         <div className="max-w-7xl mx-auto px-4">
           <span className="font-serif text-3xl font-bold text-[#2E2A35]">
             Dr. Rinat <span className="text-[#9E8FB2]">Aesthetics</span>
@@ -576,17 +576,17 @@ const App = () => {
       </motion.a>
 
       {/* Mobile Sticky Footer */}
-      <div className="fixed bottom-0 w-full bg-white border-t border-gray-100 flex md:hidden z-40 shadow-[0_-8px_20px_-10px_rgba(0,0,0,0.1)] h-20">
+      <div className="fixed bottom-0 w-full bg-white border-t border-gray-100 flex md:hidden z-40 shadow-[0_-8px_20px_-10px_rgba(0,0,0,0.1)] min-h-[5rem] pb-[env(safe-area-inset-bottom)]">
         <button
           onClick={(e) => handleScrollTo(e, '#contact')}
-          className="w-1/2 h-full bg-[#9E8FB2] text-white font-bold text-xl flex items-center justify-center gap-3 active:brightness-90 transition-all"
+          className="w-1/2 h-20 bg-[#9E8FB2] text-white font-bold text-xl flex items-center justify-center gap-3 active:brightness-90 transition-all"
         >
           <Calendar size={24} />
           השאירי פרטים
         </button>
         <button
           onClick={(e) => handleScrollTo(e, '#results')}
-          className="w-1/2 h-full bg-white text-[#2E2A35] font-bold text-xl active:bg-[#F3F0F7] transition-all flex items-center justify-center gap-3"
+          className="w-1/2 h-20 bg-white text-[#2E2A35] font-bold text-xl active:bg-[#F3F0F7] transition-all flex items-center justify-center gap-3"
         >
           <Sparkles size={24} />
           תוצאות

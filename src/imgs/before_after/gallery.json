@@ -122,8 +122,8 @@
   {
     "category": "botox",
     "id": "006",
-    "before": "",
-    "after": "",
+    "before": "botox_006_mobile_before.webp",
+    "after": "botox_006_mobile_after.webp",
     "desktop_before": "botox_006_desktop_before.webp",
     "desktop_after": "botox_006_desktop_after.webp",
     "featured": false,
