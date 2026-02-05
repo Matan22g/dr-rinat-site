@@ -215,10 +215,12 @@ const BeforeAfterSection = ({ images }) => {
            </button>
         </div>
 
-        <div className="text-center">
-          <Link to="/gallery.html" className="inline-flex items-center gap-2 text-[#A68AC2] font-bold text-lg hover:text-[#8D7FA3] transition-colors group">
-            לגלריה המלאה
-            <ArrowLeft size={20} className="transition-transform group-hover:-translate-x-1" />
+        <div className="text-center mt-8">
+          <Link 
+            to="/gallery.html" 
+            className="inline-block bg-[#9E8FB2] text-white font-bold py-3 px-8 rounded-full shadow-lg hover:bg-[#8D7FA3] transition-all active:scale-95 text-lg"
+          >
+            לצפייה בגלריה המלאה 
           </Link>
         </div>
       </div>
