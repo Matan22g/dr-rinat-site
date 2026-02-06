@@ -5,9 +5,13 @@
 @tailwind utilities;
 
 @layer base {
-  body {
+  /* FIX: 100vh Bug in Instagram/TikTok */
+  html, body {
+    height: 100%;
+    overflow-x: hidden; /* Prevents horizontal scroll glitches */
+    background-color: #FDFBFE; /* Match main bg color to mask overscroll gaps */
     @apply bg-light text-dark font-sans;
-    direction: rtl; /* חשוב מאוד לעברית */
+    direction: rtl; 
   }
   h1, h2, h3, h4, h5, h6 {
     @apply font-serif font-medium;
