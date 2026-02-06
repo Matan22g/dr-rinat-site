@@ -254,7 +254,7 @@ const App = () => {
   };
 
   return (
-    <div dir="rtl" className="min-h-[100dvh] bg-[#FDFBFE] text-[#2E2A35] font-sans selection:bg-[#9E8FB2]/30">
+    <div dir="rtl" className="h-full bg-[#FDFBFE] text-[#2E2A35] font-sans selection:bg-[#9E8FB2]/30">
       
       {/* --- Header --- */}
       <header 
