@@ -201,6 +201,26 @@ const App = () => {
     };
   }, []);
 
+  // --- Dynamic Viewport Height (Optimized) ---
+  useEffect(() => {
+    let lastHeight = 0;
+
+    const setAppHeight = () => {
+      const currentHeight = window.innerHeight;
+      
+      if (Math.abs(currentHeight - lastHeight) > 1) {
+        document.documentElement.style.setProperty('--app-height', `${currentHeight}px`);
+        lastHeight = currentHeight;
+      }
+    };
+    
+    setAppHeight();
+    
+    window.addEventListener('resize', setAppHeight);
+    
+    return () => window.removeEventListener('resize', setAppHeight);
+  }, []);
+
   // --- Load Gallery Data ---
   useEffect(() => {
     const loadGallery = () => {
@@ -254,7 +274,7 @@ const App = () => {
   };
 
   return (
-    <div dir="rtl" className="h-full bg-[#FDFBFE] text-[#2E2A35] font-sans selection:bg-[#9E8FB2]/30">
+    <div dir="rtl" className="h-full min-h-[var(--app-height,100vh)] bg-[#FDFBFE] text-[#2E2A35] font-sans selection:bg-[#9E8FB2]/30">
       
       {/* --- Header --- */}
       <header 
