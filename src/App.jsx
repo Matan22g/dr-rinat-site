@@ -407,7 +407,7 @@ const App = () => {
               
               <div className="flex flex-col sm:flex-row gap-5 justify-center md:justify-start">
                 <a 
-                  href={`https://wa.me/972528327115?text=${encodeURIComponent('היי ד"ר רינת, אשמח לפרטים לגבי ייעוץ...')}`}
+                  href={`https://wa.me/972528327115?text=${encodeURIComponent('היי ד״ר רינת, הגעתי דרך האתר ואשמח לפרטים נוספים לגבי טיפול...')}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="bg-[#25D366] text-white px-10 py-5 rounded-full font-bold text-xl hover:bg-[#1EBE57] transition-all shadow-xl shadow-[#25D366]/30 flex items-center justify-center gap-3 active:scale-95"
@@ -623,35 +623,19 @@ const App = () => {
       
       {/* --- Floating Action Elements --- */}
       <motion.a 
-        href="https://wa.me/972528327115"
+        href={`https://wa.me/972528327115?text=${encodeURIComponent('היי ד״ר רינת, הגעתי דרך האתר ואשמח לפרטים נוספים לגבי טיפול...')}`}
         target="_blank"
         rel="noopener noreferrer"
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
         whileHover={{ scale: 1.1 }}
-        className="fixed z-50 bg-[#25D366] text-white p-5 rounded-full shadow-2xl bottom-24 right-6 md:bottom-8 md:right-8 flex items-center justify-center"
+        whileTap={{ scale: 0.9 }}
+        className="fixed z-50 bg-[#25D366] text-white p-4 md:p-5 rounded-full shadow-2xl bottom-6 right-6 md:bottom-8 md:right-8 flex items-center justify-center border-2 border-white"
         aria-label="Contact via WhatsApp"
       >
-        <WhatsappIcon size={36} />
+        <span className="absolute inset-0 rounded-full bg-[#25D366] animate-ping opacity-20"></span>
+        <WhatsappIcon size={32} />
       </motion.a>
-
-      {/* Mobile Sticky Footer */}
-      <div className="fixed bottom-0 w-full bg-white border-t border-gray-100 flex md:hidden z-40 shadow-[0_-8px_20px_-10px_rgba(0,0,0,0.1)] min-h-[5rem] pb-[env(safe-area-inset-bottom)]">
-        <button
-          onClick={(e) => handleScrollTo(e, '#contact')}
-          className="w-1/2 h-20 bg-[#9E8FB2] text-white font-bold text-xl flex items-center justify-center gap-3 active:brightness-90 transition-all"
-        >
-          <Calendar size={24} />
-          השאירי פרטים
-        </button>
-        <button
-          onClick={(e) => handleScrollTo(e, '#results')}
-          className="w-1/2 h-20 bg-white text-[#2E2A35] font-bold text-xl active:bg-[#F3F0F7] transition-all flex items-center justify-center gap-3"
-        >
-          <Sparkles size={24} />
-          תוצאות
-        </button>
-      </div>
 
     </div>
   );
