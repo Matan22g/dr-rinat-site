@@ -1,65 +1,54 @@
-// --- פונקציות עזר (Helpers) ---
+// --- Fallback Config (למקרה שה-KV ריק) ---
+const DEFAULT_FLOW = {
+  "start": {
+    "text": "שלום! ✨\nברוכה הבאה לקליניקה. במה נוכל לעזור?",
+    "buttons": [{ "id": "human", "title": "שיחה עם נציג 🙋‍♀️" }]
+  }
+};
+
+// --- Helper Functions ---
 
 async function sendWhatsApp(to, payload, env) {
   const url = `https://graph.facebook.com/v18.0/${env.PHONE_NUMBER_ID}/messages`;
-  try {
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "Authorization": `Bearer ${env.WHATSAPP_TOKEN}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ messaging_product: "whatsapp", to, ...payload }),
-    });
-    return await res.json();
-  } catch (e) { return null; }
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Authorization": `Bearer ${env.WHATSAPP_TOKEN}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ messaging_product: "whatsapp", to, ...payload }),
+  });
+  return await res.json();
 }
 
 async function sendTelegram(method, payload, env) {
   const url = `https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/${method}`;
-  try {
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: env.TELEGRAM_CHAT_ID, ...payload }),
-    });
-    return await res.json();
-  } catch (e) { return null; }
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ chat_id: env.TELEGRAM_CHAT_ID, ...payload }),
+  });
+  return await res.json();
 }
 
-// --- פונקציה מיוחדת לטיפול במדיה (תמונות) ---
 async function forwardImageToTelegram(mediaId, threadId, caption, env) {
   try {
-    // 1. קבלת כתובת הקובץ ממטא
     const mediaRes = await fetch(`https://graph.facebook.com/v18.0/${mediaId}`, {
       headers: { "Authorization": `Bearer ${env.WHATSAPP_TOKEN}` }
     });
     const mediaData = await mediaRes.json();
-    
     if (mediaData.url) {
-      // 2. הורדת הקובץ הבינארי
-      const fileRes = await fetch(mediaData.url, {
-        headers: { "Authorization": `Bearer ${env.WHATSAPP_TOKEN}` }
-      });
+      const fileRes = await fetch(mediaData.url, { headers: { "Authorization": `Bearer ${env.WHATSAPP_TOKEN}` } });
       const fileBlob = await fileRes.blob();
-
-      // 3. שליחה לטלגרם כ-Multipart FormData
       const formData = new FormData();
       formData.append("chat_id", env.TELEGRAM_CHAT_ID);
       formData.append("message_thread_id", threadId);
       formData.append("photo", fileBlob, "photo.jpg");
       formData.append("caption", caption);
-
-      await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendPhoto`, {
-        method: "POST",
-        body: formData
-      });
+      await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendPhoto`, { method: "POST", body: formData });
       return true;
     }
-  } catch (e) {
-    console.error("Error forwarding image:", e);
-  }
-  return false;
+  } catch (e) { return false; }
 }
 
-// --- המנוע הראשי ---
+// --- Main Engine ---
 
 export async function onRequest({ request, env }) {
   if (request.method === "GET") {
@@ -74,11 +63,18 @@ export async function onRequest({ request, env }) {
     try {
       const body = await request.json();
 
-      // א. עדכון שם (עבור רינת)
+      // שליפת קונפיגורציה מה-KV
+      let BOT_FLOW;
+      try {
+        const kvConfig = await env.SESSIONS_KV.get("BOT_CONFIG", { type: "json" });
+        BOT_FLOW = kvConfig || DEFAULT_FLOW;
+      } catch (e) { BOT_FLOW = DEFAULT_FLOW; }
+
+      // עדכון שם טופיק בטלגרם
       if (body.message?.forum_topic_edited) {
         const tid = body.message.message_thread_id;
-        const newRawName = body.message.forum_topic_edited.name.replace(/[✅🔴🆕]\s*/g, '').split(' (')[0].trim();
-        await env.SESSIONS_KV.put(`name_${tid}`, newRawName);
+        const newName = body.message.forum_topic_edited.name.replace(/[✅🔴🆕]\s*/g, '').split(' (')[0].trim();
+        await env.SESSIONS_KV.put(`name_${tid}`, newName);
         return new Response("OK", { status: 200 });
       }
 
@@ -107,59 +103,65 @@ export async function onRequest({ request, env }) {
         if (session.threadId) {
           const isButton = msg.type === "interactive";
           const isImage = msg.type === "image";
-          const customerText = isButton ? msg.interactive.button_reply.title : (msg.text?.body || "");
           const buttonId = isButton ? msg.interactive.button_reply.id : null;
+          const customerText = isButton ? msg.interactive.button_reply.title : (msg.text?.body || "");
 
-          if (["תפריט", "menu", "התחלה"].some(k => customerText.toLowerCase().includes(k))) {
+          const requestedStart = ["תפריט", "menu", "התחלה"].some(k => customerText.toLowerCase().includes(k));
+          const nextStepId = buttonId || ( (session.isFirstTime || requestedStart) ? "start" : null );
+
+          if (requestedStart) {
             session.humanMode = false;
             await env.SESSIONS_KV.put(from, JSON.stringify(session));
           }
 
           const currentName = (await env.SESSIONS_KV.get(`name_${session.threadId}`)) || session.name || rawName;
 
-          // טיפול בתמונה
+          // עדכון טלגרם
           if (isImage) {
-            const mediaId = msg.image.id;
-            const caption = `👤 מאת: ${currentName}\n🖼️ תמונה: ${msg.image.caption || ""}\n\nPhone: ${from}`;
-            await forwardImageToTelegram(mediaId, session.threadId, caption, env);
-          } 
-          // טיפול בטקסט
-          else {
-            const isUrgent = buttonId === "human" || customerText.includes("דחוף");
+            await forwardImageToTelegram(msg.image.id, session.threadId, `👤 מאת: ${currentName}\n🖼️ תמונה\n\nPhone: ${from}`, env);
+          } else {
             await sendTelegram("sendMessage", {
               message_thread_id: session.threadId,
               text: `👤 מאת: ${currentName}\n💬 הודעה: ${customerText}\n\nPhone: ${from}`,
-              disable_notification: !isUrgent
+              disable_notification: (buttonId !== "human" && !customerText.includes("דחוף"))
             }, env);
           }
 
-          // תגובות אוטומטיות (בוואטסאפ - ללא שם אישי)
+          // תגובה אוטומטית (Decision Tree)
           if (buttonId === "human") {
             session.humanMode = true;
             await env.SESSIONS_KV.put(from, JSON.stringify(session));
             await sendTelegram("editForumTopic", { message_thread_id: session.threadId, name: `🔴 ${currentName} (${from.slice(-4)})` }, env);
             await sendWhatsApp(from, { text: { body: "ההודעה הועברה לרינת, היא תחזור אלייך בהקדם! ❤️" } }, env);
           } 
-          else if (session.isFirstTime || customerText.toLowerCase().includes("תפריט")) {
-            if (session.isFirstTime) { session.isFirstTime = false; await env.SESSIONS_KV.put(from, JSON.stringify(session)); }
+          else if (!session.humanMode && nextStepId && BOT_FLOW[nextStepId]) {
+            const step = BOT_FLOW[nextStepId];
+            let buttons = [...step.buttons];
+
+            // הזרקת "חזרה לתפריט" אוטומטית אם יש מקום
+            if (nextStepId !== "start" && buttons.length < 3) {
+              buttons.push({ id: "start", title: "חזרה לתפריט ✨" });
+            }
+
             await sendWhatsApp(from, {
               type: "interactive",
               interactive: {
                 type: "button",
-                header: { type: "text", text: "שלום! ✨" },
-                body: { text: "ברוכה הבאה לקליניקה של ד״ר רינת. במה נוכל לעזור היום?" },
-                action: { buttons: [
-                  { type: "reply", reply: { id: "book", title: "תיאום תור 📅" } },
-                  { type: "reply", reply: { id: "info", title: "טיפולים ומחירים 💉" } },
-                  { type: "reply", reply: { id: "human", title: "שיחה עם נציג 🙋‍♀️" } }
-                ]}
+                header: { type: "text", text: "ד״ר רינת - אסתטיקה" },
+                body: { text: step.text },
+                action: { buttons: buttons.slice(0, 3).map(b => ({ type: "reply", reply: b })) }
               }
             }, env);
+
+            if (session.isFirstTime) {
+                session.isFirstTime = false;
+                await env.SESSIONS_KV.put(from, JSON.stringify(session));
+            }
           }
         }
       }
 
-      // רינת עונה מהטלגרם
+      // רינת עונה מטלגרם
       else if (body.message?.reply_to_message) {
         const threadId = body.message.message_thread_id;
         const parentText = body.message.reply_to_message.text || body.message.reply_to_message.caption || "";
@@ -167,14 +169,14 @@ export async function onRequest({ request, env }) {
 
         if (phoneMatch) {
           const customerPhone = phoneMatch[1];
-          await sendWhatsApp(customerPhone, { text: { body: body.message.text } }, env);
-          
-          let session = await env.SESSIONS_KV.get(customerPhone, { type: "json" }) || {};
-          session.humanMode = true;
-          await env.SESSIONS_KV.put(customerPhone, JSON.stringify(session));
-
-          const currentName = (await env.SESSIONS_KV.get(`name_${threadId}`)) || "לקוחה";
-          await sendTelegram("editForumTopic", { message_thread_id: threadId, name: `✅ ${currentName} (${customerPhone.slice(-4)})` }, env);
+          const waRes = await sendWhatsApp(customerPhone, { text: { body: body.message.text } }, env);
+          if (waRes?.messages) {
+            let session = await env.SESSIONS_KV.get(customerPhone, { type: "json" }) || {};
+            session.humanMode = true;
+            await env.SESSIONS_KV.put(customerPhone, JSON.stringify(session));
+            const currentName = (await env.SESSIONS_KV.get(`name_${threadId}`)) || "לקוחה";
+            await sendTelegram("editForumTopic", { message_thread_id: threadId, name: `✅ ${currentName} (${customerPhone.slice(-4)})` }, env);
+          }
         }
       }
     } catch (e) { console.error(e); }
