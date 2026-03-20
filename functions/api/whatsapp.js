@@ -1,4 +1,4 @@
-// --- Helper Functions ---
+// --- Helper functions ---
 async function sendWhatsApp(to, payload, env) {
   const url = `https://graph.facebook.com/v18.0/${env.PHONE_NUMBER_ID}/messages`;
   const res = await fetch(url, {
@@ -31,35 +31,32 @@ export async function onRequest({ request, env }) {
     try {
       const body = await request.json();
 
-      // 1. Handling Topic Name Edits by Rinat
+      // 1. Handle Topic Edits
       if (body.message?.forum_topic_edited) {
         const threadId = body.message.message_thread_id;
-        const newRawName = body.message.forum_topic_edited.name.replace(/[✅🔴🆕]\s*/g, '').split(' (')[0];
-        await env.SESSIONS_KV.put(`name_${threadId}`, newRawName);
+        const newName = body.message.forum_topic_edited.name.replace(/[✅🔴🆕]\s*/g, '');
+        await env.SESSIONS_KV.put(`name_${threadId}`, newName);
         return new Response("OK", { status: 200 });
       }
 
       const value = body.entry?.[0]?.changes?.[0]?.value;
       const msg = value?.messages?.[0];
 
-      // 2. Incoming Message from WhatsApp
+      // 2. Incoming from WhatsApp
       if (msg) {
         const from = msg.from;
-        const rawName = value.contacts?.[0]?.profile?.name || "לקוחה";
+        const rawName = value.contacts?.[0]?.profile?.name || "לקוחה חדשה";
         
-        // Robust retrieval of session data
-        let sessionRaw = await env.SESSIONS_KV.get(from);
-        let session = {};
-        try {
-          session = JSON.parse(sessionRaw) || {};
-        } catch (e) {
-          // If legacy data was a string (just the threadId), migrate it
-          if (sessionRaw) session = { threadId: sessionRaw, humanMode: false };
+        // Retrieval & Legacy Fix
+        let session = await env.SESSIONS_KV.get(from, { type: "json" });
+        if (!session || typeof session !== 'object') {
+          session = { threadId: null, humanMode: false };
         }
-        
-        // Create new topic if needed
+
+        // Create Topic if missing
         if (!session.threadId) {
-          const topic = await sendTelegram("createForumTopic", { name: `🆕 ${rawName} (${from.slice(-4)})` }, env);
+          const topicName = `${rawName} (${from.slice(-4)})`;
+          const topic = await sendTelegram("createForumTopic", { name: `🆕 ${topicName}` }, env);
           if (topic.ok) {
             session = { threadId: topic.result.message_thread_id, name: rawName, humanMode: false };
             await env.SESSIONS_KV.put(from, JSON.stringify(session));
@@ -69,68 +66,64 @@ export async function onRequest({ request, env }) {
 
         const isButton = msg.type === "interactive";
         const customerText = isButton ? msg.interactive.button_reply.title : (msg.text?.body || "");
-        const buttonId = isButton ? msg.interactive.button_reply.id : null;
-
-        // Reset Human Mode if user requests it
+        
+        // Reset Logic
         if (["תפריט", "menu", "התחלה"].some(k => customerText.toLowerCase().includes(k))) {
           session.humanMode = false;
           await env.SESSIONS_KV.put(from, JSON.stringify(session));
         }
 
         const currentName = await env.SESSIONS_KV.get(`name_${session.threadId}`) || session.name || rawName;
-        const isUrgent = buttonId === "human" || customerText.includes("דחוף");
 
-        // Update Telegram
+        // Message to Telegram (MUST include "Phone: number" for reply to work)
         await sendTelegram("sendMessage", {
           message_thread_id: session.threadId,
-          text: `👤 *${currentName}*:\n${customerText}\n\nPhone: ${from}`, // Removed brackets for cleaner regex
+          text: `👤 *${currentName}*:\n${customerText}\n\nPhone: ${from}`,
           parse_mode: "Markdown",
-          disable_notification: !isUrgent
-        }, env);
+          disable_notification: (customerText.length > 3 && !customerText.includes("דחוף"))
+        });
 
-        // Logic - Routing
-        if (buttonId === "human") {
+        // Response Logic
+        if (isButton && msg.interactive.button_reply.id === "human") {
           session.humanMode = true;
           await env.SESSIONS_KV.put(from, JSON.stringify(session));
           await sendTelegram("editForumTopic", { message_thread_id: session.threadId, name: `🔴 מענה: ${currentName}` }, env);
-          await sendWhatsApp(from, { text: { body: "הודעה הועברה לרינת, היא תענה לך בהקדם! ❤️" } }, env);
-        } else if (isButton) {
-          let reply = (buttonId === "book") ? "איזה כיף! תכתבי לנו מתי נוח לך ואיזה טיפול תרצי. ✨" : "תוכלי למצוא מחירים כאן: https://drrinat.co.il/treatments";
-          await sendWhatsApp(from, { text: { body: reply } }, env);
-        } else if (!session.humanMode) {
-          // Show menu only if NOT in human mode
-          if (customerText.length < 10 || ["היי", "שלום"].some(k => customerText.includes(k))) {
-            await sendWhatsApp(from, {
-              type: "interactive",
-              interactive: {
-                type: "button",
-                header: { type: "text", text: `שלום ${currentName}! ✨` },
-                body: { text: "ברוכה הבאה. במה נוכל לעזור?" },
-                action: { buttons: [
-                  { type: "reply", reply: { id: "book", title: "תיאום תור 📅" } },
-                  { type: "reply", reply: { id: "info", title: "טיפולים ומחירים 💉" } },
-                  { type: "reply", reply: { id: "human", title: "שיחה עם נציג 🙋‍♀️" } }
-                ]}
-              }
-            }, env);
-          }
+          await sendWhatsApp(from, { text: { body: "הודעה הועברה לרינת, היא תחזור אלייך בקרוב! ❤️" } }, env);
+        } else if (!session.humanMode && (customerText.length < 10 || ["היי", "שלום"].some(k => customerText.includes(k)))) {
+          // Show Menu
+          await sendWhatsApp(from, {
+            type: "interactive",
+            interactive: {
+              type: "button",
+              header: { type: "text", text: `שלום ${currentName}! ✨` },
+              body: { text: "ברוכה הבאה. במה נוכל לעזור?" },
+              action: { buttons: [
+                { type: "reply", reply: { id: "book", title: "תיאום תור 📅" } },
+                { type: "reply", reply: { id: "info", title: "טיפולים ומחירים 💉" } },
+                { type: "reply", reply: { id: "human", title: "שיחה עם נציג 🙋‍♀️" } }
+              ]}
+            }
+          }, env);
         }
       }
 
-      // 3. Rinat replying from Telegram
+      // 3. Reply from Telegram to WhatsApp
       else if (body.message?.reply_to_message) {
         const threadId = body.message.message_thread_id;
-        const text = body.message.reply_to_message.text || "";
-        const phoneMatch = text.match(/Phone:\s*(\d+)/);
+        const parentMessageText = body.message.reply_to_message.text || "";
+        const phoneMatch = parentMessageText.match(/Phone:\s*(\d+)/);
 
         if (phoneMatch) {
           const customerPhone = phoneMatch[1];
-          await sendWhatsApp(customerPhone, { text: { body: body.message.text } }, env);
-          const currentName = await env.SESSIONS_KV.get(`name_${threadId}`) || "לקוחה";
-          await sendTelegram("editForumTopic", { message_thread_id: threadId, name: `✅ ${currentName}` }, env);
+          const result = await sendWhatsApp(customerPhone, { text: { body: body.message.text } }, env);
+          
+          if (result.messages) {
+             const currentName = await env.SESSIONS_KV.get(`name_${threadId}`) || "לקוחה";
+             await sendTelegram("editForumTopic", { message_thread_id: threadId, name: `✅ ${currentName}` }, env);
+          }
         }
       }
-    } catch (e) { console.error(e); }
+    } catch (e) { console.error("Critical Error:", e); }
     return new Response("OK", { status: 200 });
   }
 }
