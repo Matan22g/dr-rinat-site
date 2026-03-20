@@ -32,28 +32,45 @@ async function forwardAudioToTelegram(mediaId, threadId, caption, env) {
   } catch (e) { console.error("Audio forward error:", e); return false; }
 }
 async function getTelegramFile(fileId, env) {
-  // 1. מבקשים מטלגרם את הנתיב של הקובץ
+  console.log(`[Telegram] Fetching file info for ID: ${fileId}`);
   const res = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/getFile?file_id=${fileId}`);
   const { result } = await res.json();
   
-  // 2. מורידים את הקובץ עצמו
+  if (!result?.file_path) {
+    console.error("[Telegram] ❌ Could not get file path from Telegram");
+    return null;
+  }
+
   const fileRes = await fetch(`https://api.telegram.org/file/bot${env.TELEGRAM_BOT_TOKEN}/${result.file_path}`);
-  return await fileRes.blob();
+  const arrayBuffer = await fileRes.arrayBuffer();
+  // יצירת Blob עם Type מוגדר עוזרת ל-Meta לזהות את הקובץ
+  return new Blob([arrayBuffer], { type: "audio/ogg" });
 }
 
 async function uploadToWhatsApp(blob, env) {
+  if (!blob) return null;
+
   const formData = new FormData();
+  // חשוב: Meta דורשת את השדות האלו בדיוק
   formData.append("file", blob, "voice.ogg");
   formData.append("messaging_product", "whatsapp");
-  formData.append("type", "audio/ogg; codecs=opus");
 
+  console.log("[Meta] Uploading media to WhatsApp...");
   const res = await fetch(`https://graph.facebook.com/v18.0/${env.PHONE_NUMBER_ID}/media`, {
     method: "POST",
     headers: { "Authorization": `Bearer ${env.WHATSAPP_TOKEN}` },
     body: formData
   });
+
   const data = await res.json();
-  return data.id; // מחזיר את ה-media_id
+  
+  if (!data.id) {
+    console.error("=== ❌ META MEDIA UPLOAD FAILED ===", JSON.stringify(data));
+    return null;
+  }
+
+  console.log(`[Meta] ✅ Media uploaded successfully. ID: ${data.id}`);
+  return data.id;
 }
 
 async function sendWhatsApp(to, payload, env) {
