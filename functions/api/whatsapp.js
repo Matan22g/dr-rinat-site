@@ -19,35 +19,74 @@ export async function onRequest({ request, env }) {
       const body = await request.json();
 
       // Ensure it's a WhatsApp business account webhook
-      if (body.object === "whatsapp_business_account") {
-        const entry = body.entry?.[0];
-        const changes = entry?.changes?.[0];
-        const value = changes?.value;
-        const message = value?.messages?.[0];
-        const contact = value?.contacts?.[0];
+      // 1. Handle incoming WhatsApp Messages
+      if (body.object === "whatsapp_business_account" && body.entry?.[0]?.changes?.[0]?.value?.messages?.[0]) {
+        const msg = body.entry[0].changes[0].value.messages[0];
+        const from = msg.from; // Customer's phone
+        const userName = body.entry[0].changes[0].value.contacts?.[0]?.profile?.name || "לקוח/ה";
 
-        // Process only if it's a valid text message
-        if (message && message.type === "text") {
-          const text = message.text.body;
-          const phone = message.from;
-          const name = contact?.profile?.name || "Unknown";
+        // Check if it's a button reply or a new message
+        const isButtonReply = msg.type === "interactive";
+        const messageText = isButtonReply ? msg.interactive.button_reply.title : (msg.text?.body || "הודעה ללא טקסט");
 
-          const telegramText = `New WhatsApp Message\nFrom: ${name}\nPhone: ${phone}\nMessage: ${text}`;
-          const telegramUrl = `https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`;
+        // Send to Telegram (so Rinat knows what happened)
+        const telegramText = `📩 *הודעה חדשה מהקליניקה!*\n👤 *מאת:* ${userName}\n📱 *Phone:* ${from}\n💬 *הודעה:* ${messageText}`;
+        await fetch(`https://api.telegram.org/bot${env.TELEGRAM_TOKEN}/sendMessage`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chat_id: env.TELEGRAM_CHAT_ID, text: telegramText, parse_mode: "Markdown" }),
+        });
 
-          // Send to Telegram Bot API
-          try {
-            await fetch(telegramUrl, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                chat_id: env.TELEGRAM_CHAT_ID,
-                text: telegramText,
-              }),
-            });
-          } catch (telegramErr) {
-            console.error("Telegram API error:", telegramErr);
+        // If it's a new conversation (not a button click), send the Menu
+        if (!isButtonReply) {
+          const metaApiUrl = `https://graph.facebook.com/v18.0/${env.PHONE_NUMBER_ID}/messages`;
+          await fetch(metaApiUrl, {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${env.WHATSAPP_TOKEN}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              messaging_product: "whatsapp",
+              to: from,
+              type: "interactive",
+              interactive: {
+                type: "button",
+                header: { type: "text", text: `שלום ${userName}! ✨` },
+                body: { text: "ברוכה הבאה לקליניקה לאסתטיקה של ד״ר רינת. במה נוכל לעזור לך היום?" },
+                footer: { text: "בחרי אחת מהאפשרויות מטה:" },
+                action: {
+                  buttons: [
+                    { shadow_index: 1, type: "reply", reply: { id: "book_appointment", title: "תיאום תור 📅" } },
+                    { shadow_index: 2, type: "reply", reply: { id: "treatments_info", title: "טיפולים ומחירים 💉" } },
+                    { shadow_index: 3, type: "reply", reply: { id: "talk_to_human", title: "שיחה עם נציג 🙋‍♀️" } }
+                  ]
+                }
+              }
+            }),
+          });
+        } else {
+          // Logic for button clicks
+          let replyMessage = "";
+          if (msg.interactive.button_reply.id === "book_appointment") {
+            replyMessage = "איזה כיף! כדי לתאם תור, כתבי לנו כאן מהו המועד המועדף עלייך (בוקר/ערב) ואיזה טיפול את מעוניינת לבצע, ורינת תחזור אלייך לתיאום סופי. ✨";
+          } else if (msg.interactive.button_reply.id === "treatments_info") {
+            replyMessage = "הקליניקה מציעה מגוון טיפולים: בוטוקס, חומצה היאלורונית, מזותרפיה ועוד. תוכלי לראות את הפירוט המלא באתר שלנו: https://drrinat.co.il/treatments";
+          } else if (msg.interactive.button_reply.id === "talk_to_human") {
+            replyMessage = "אין בעיה, מעבירה אותך למענה אנושי. רינת תענה לך בהקדם האפשרי! ❤️";
           }
+
+          // Send the follow-up message based on the button clicked
+          const metaApiUrl = `https://graph.facebook.com/v18.0/${env.PHONE_NUMBER_ID}/messages`;
+          await fetch(metaApiUrl, {
+            method: "POST",
+            headers: { "Authorization": `Bearer ${env.WHATSAPP_TOKEN}`, "Content-Type": "application/json" },
+            body: JSON.stringify({
+              messaging_product: "whatsapp",
+              to: from,
+              text: { body: replyMessage }
+            }),
+          });
         }
       }
 // Handle incoming Telegram Webhook payloads
