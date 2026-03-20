@@ -13,7 +13,7 @@ export async function onRequest({ request, env }) {
     }
   }
 
-  // Handle POST request for Incoming Messages.
+  // Handle POST request for Incoming Messages
   if (request.method === "POST") {
     try {
       const body = await request.json();
