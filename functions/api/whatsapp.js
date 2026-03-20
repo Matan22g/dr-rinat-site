@@ -198,7 +198,7 @@ export async function onRequest({ request, env }) {
             session.humanMode = true;
             await env.SESSIONS_KV.put(from, JSON.stringify(session));
             await sendTelegram("editForumTopic", { message_thread_id: session.threadId, name: `🔴 ${currentName} (${from.slice(-4)})` }, env);
-            await sendWhatsApp(from, { text: { body: "ההודעה הועברה לרינת, היא תחזור אלייך בהקדם! ❤️" } }, env);
+            await sendWhatsApp(from, { text: { body: "ההודעה הועברה לד'ר רינת, היא תחזור אלייך בהקדם! ❤️" } }, env);
           } 
           else if (!session.humanMode && nextStepId) {
             // ניקוי הסיומות כדי לנתב את כולם לאותה תשובה בספרייה (אופציה שהכנו מקודם)
