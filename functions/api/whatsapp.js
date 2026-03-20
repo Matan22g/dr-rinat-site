@@ -1,126 +1,107 @@
 export async function onRequest({ request, env }) {
-  // 1. Handle GET request for Webhook Verification (Meta)
+  // 1. GET - אימות מול מטא
   if (request.method === "GET") {
-    const url = new URL(request.url);
-    const mode = url.searchParams.get("hub.mode");
-    const token = url.searchParams.get("hub.verify_token");
-    const challenge = url.searchParams.get("hub.challenge");
-
-    if (mode === "subscribe" && token === env.VERIFY_TOKEN) {
-      return new Response(challenge, { status: 200 });
+    const { searchParams } = new URL(request.url);
+    if (searchParams.get("hub.verify_token") === env.VERIFY_TOKEN) {
+      return new Response(searchParams.get("hub.challenge"), { status: 200 });
     }
     return new Response("Forbidden", { status: 403 });
   }
 
-  // 2. Handle POST request for Incoming Webhooks
+  // 2. POST - טיפול בהודעות
   if (request.method === "POST") {
     try {
       const body = await request.json();
+      const value = body.entry?.[0]?.changes?.[0]?.value;
+      const msg = value?.messages?.[0];
 
-      // --- תרחיש א': הודעה נכנסת מוואטסאפ (לקוחה) ---
-      if (body.object === "whatsapp_business_account" && body.entry?.[0]?.changes?.[0]?.value?.messages?.[0]) {
-        const value = body.entry[0].changes[0].value;
-        const msg = value.messages[0];
-        const from = msg.from; // מספר הטלפון של הלקוחה
+      // --- תרחיש א': הודעה מהוואטסאפ (לקוחה) ---
+      if (msg) {
+        const from = msg.from;
         const contactName = value.contacts?.[0]?.profile?.name || "לקוח/ה";
         
-        // בדיקה האם זו לחיצה על כפתור או הודעת טקסט רגילה
-        const isButtonReply = msg.type === "interactive";
-        const customerText = isButtonReply ? msg.interactive.button_reply.title : (msg.text?.body || "הודעה ללא טקסט");
+        // בדיקה בזיכרון (KV) - האם כבר יש חדר ללקוחה הזו?
+        let threadId = await env.SESSIONS_KV.get(from);
 
-        // עדכון רינת בטלגרם
-        const telegramText = `📩 *הודעה חדשה מהקליניקה!*\n👤 *מאת:* ${contactName}\n📱 *Phone:* ${from}\n💬 *הודעה:* ${customerText}`;
+        // אם אין חדר - יוצרים אחד חדש בטלגרם
+        if (!threadId) {
+          const createTopicRes = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/createForumTopic`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              chat_id: env.TELEGRAM_CHAT_ID,
+              name: `${contactName} (${from})`
+            }),
+          });
+          const topicData = await createTopicRes.json();
+          if (topicData.ok) {
+            threadId = topicData.result.message_thread_id;
+            // שומרים בזיכרון לשימוש עתידי
+            await env.SESSIONS_KV.put(from, threadId);
+          }
+        }
+
+        const isButton = msg.type === "interactive";
+        const customerText = isButton ? msg.interactive.button_reply.title : (msg.text?.body || "שלחה הודעה");
+
+        // שליחה לחדר הספציפי בטלגרם
         await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             chat_id: env.TELEGRAM_CHAT_ID,
-            text: telegramText,
+            message_thread_id: threadId, // כאן הקסם קורה!
+            text: `👤 *${contactName}*:\n${customerText}\n\n[Phone: ${from}]`,
             parse_mode: "Markdown"
           }),
         });
 
-        const metaUrl = `https://graph.facebook.com/v18.0/${env.PHONE_NUMBER_ID}/messages`;
+        // לוגיקת כפתורים (כמו מקודם)
+        if (!isButton && customerText.length < 10) {
+           await sendMenu(from, contactName, env);
+        }
+      }
 
-        // אם זו הודעה חדשה (לא כפתור) - שלח את תפריט הכפתורים
-        if (!isButtonReply) {
-          await fetch(metaUrl, {
+      // --- תרחיש ב': מענה מטלגרם ---
+      else if (body.message?.reply_to_message) {
+        // שולפים את המספר מההודעה המקורית (Regex)
+        const phoneMatch = body.message.reply_to_message.text.match(/Phone:\s*(\d+)/);
+        if (phoneMatch) {
+          await fetch(`https://graph.facebook.com/v18.0/${env.PHONE_NUMBER_ID}/messages`, {
             method: "POST",
             headers: { "Authorization": `Bearer ${env.WHATSAPP_TOKEN}`, "Content-Type": "application/json" },
             body: JSON.stringify({
               messaging_product: "whatsapp",
-              to: from,
-              type: "interactive",
-              interactive: {
-                type: "button",
-                header: { type: "text", text: `שלום ${contactName}! ✨` },
-                body: { text: "ברוכה הבאה לקליניקה של ד״ר רינת. במה נוכל לעזור לך היום?" },
-                footer: { text: "בחרי אחת מהאפשרויות מטה:" },
-                action: {
-                  buttons: [
-                    { type: "reply", reply: { id: "book", title: "תיאום תור 📅" } },
-                    { type: "reply", reply: { id: "info", title: "טיפולים ומחירים 💉" } },
-                    { type: "reply", reply: { id: "human", title: "שיחה עם נציג 🙋‍♀️" } }
-                  ]
-                }
-              }
-            }),
-          });
-        } 
-        // אם זו לחיצה על כפתור - שלח תשובה ממוקדת
-        else {
-          let responseText = "";
-          const buttonId = msg.interactive.button_reply.id;
-          
-          if (buttonId === "book") {
-            responseText = "איזה כיף! תכתבי לנו כאן מהו המועד המועדף עלייך (בוקר/ערב) ואיזה טיפול את מעוניינת לבצע, ורינת תחזור אלייך לתיאום סופי. ✨";
-          } else if (buttonId === "info") {
-            responseText = "הקליניקה מציעה בוטוקס, חומצה היאלורונית ועוד. פירוט מלא ומחירים תוכלי למצוא כאן: https://drrinat.co.il/treatments";
-          } else if (buttonId === "human") {
-            responseText = "אין בעיה, רינת קיבלה עדכון שאת מחכה למענה והיא תחזור אלייך בהקדם האפשרי! ❤️";
-          }
-
-          await fetch(metaUrl, {
-            method: "POST",
-            headers: { "Authorization": `Bearer ${env.WHATSAPP_TOKEN}`, "Content-Type": "application/json" },
-            body: JSON.stringify({
-              messaging_product: "whatsapp",
-              to: from,
-              text: { body: responseText }
+              to: phoneMatch[1],
+              text: { body: body.message.text }
             }),
           });
         }
       }
-
-      // --- תרחיש ב': רינת עונה מהטלגרם (תשובה ללקוחה) ---
-      else if (body.update_id && body.message) {
-        const message = body.message;
-        // בדיקה שמדובר ב-Reply להודעה קיימת
-        if (message.reply_to_message && message.text) {
-          const originalText = message.reply_to_message.text;
-          const phoneMatch = originalText.match(/Phone:\s*(\d+)/);
-
-          if (phoneMatch && phoneMatch[1]) {
-            const customerPhone = phoneMatch[1];
-            await fetch(`https://graph.facebook.com/v18.0/${env.PHONE_NUMBER_ID}/messages`, {
-              method: "POST",
-              headers: { "Authorization": `Bearer ${env.WHATSAPP_TOKEN}`, "Content-Type": "application/json" },
-              body: JSON.stringify({
-                messaging_product: "whatsapp",
-                to: customerPhone,
-                text: { body: message.text }
-              }),
-            });
-          }
-        }
-      }
-
-    } catch (err) {
-      console.error("Critical Error:", err);
-    }
-
+    } catch (e) { console.error(e); }
     return new Response("OK", { status: 200 });
   }
+}
 
-  return new Response("Method Not Allowed", { status: 405 });
+// פונקציית עזר לשליחת תפריט
+async function sendMenu(to, name, env) {
+  await fetch(`https://graph.facebook.com/v18.0/${env.PHONE_NUMBER_ID}/messages`, {
+    method: "POST",
+    headers: { "Authorization": `Bearer ${env.WHATSAPP_TOKEN}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      messaging_product: "whatsapp",
+      to: to,
+      type: "interactive",
+      interactive: {
+        type: "button",
+        body: { text: `שלום ${name}, במה אפשר לעזור?` },
+        action: {
+          buttons: [
+            { type: "reply", reply: { id: "book", title: "תיאום תור 📅" } },
+            { type: "reply", reply: { id: "info", title: "טיפולים ומחירים 💉" } }
+          ]
+        }
+      }
+    }),
+  });
 }
