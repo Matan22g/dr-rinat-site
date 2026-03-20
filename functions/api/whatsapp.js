@@ -117,18 +117,30 @@ export async function onRequest({ request, env }) {
           const currentName = (await env.SESSIONS_KV.get(`name_${session.threadId}`)) || session.name || rawName;
 
           // עדכון טלגרם
+// --- בדיקה אם צריך להתריע לרינת ---
+          const isBookingClick = (buttonId === "main_booking");
+          const isHumanClick = (buttonId === "human");
+          const isUrgent = customerText.includes("דחוף");
+
+          // אם לחצו על קביעת תור, נשנה את הסטטוס לאדום כבר עכשיו, אבל הבוט ימשיך לפעול בינתיים
+          if (isBookingClick) {
+            await sendTelegram("editForumTopic", { message_thread_id: session.threadId, name: `🔴 ${currentName} (${from.slice(-4)})` }, env);
+          }
+
+          // עדכון טלגרם
           if (isImage) {
             await forwardImageToTelegram(msg.image.id, session.threadId, `👤 מאת: ${currentName}\n🖼️ תמונה\n\nPhone: ${from}`, env);
           } else {
             await sendTelegram("sendMessage", {
               message_thread_id: session.threadId,
               text: `👤 מאת: ${currentName}\n💬 הודעה: ${customerText}\n\nPhone: ${from}`,
-              disable_notification: (buttonId !== "human" && !customerText.includes("דחוף"))
+              // רינת תקבל התראה (צפצוף) גם על לחיצת נציג וגם על כפתור קביעת תור הראשי!
+              disable_notification: !(isHumanClick || isBookingClick || isUrgent)
             }, env);
           }
 
           // תגובה אוטומטית (Decision Tree)
-          if (buttonId === "human") {
+          if (isHumanClick) {
             session.humanMode = true;
             await env.SESSIONS_KV.put(from, JSON.stringify(session));
             await sendTelegram("editForumTopic", { message_thread_id: session.threadId, name: `🔴 ${currentName} (${from.slice(-4)})` }, env);
@@ -136,9 +148,9 @@ export async function onRequest({ request, env }) {
           } 
           else if (!session.humanMode && nextStepId && BOT_FLOW[nextStepId]) {
             const step = BOT_FLOW[nextStepId];
-            let buttons = [...step.buttons];
+            let buttons = step.buttons ? [...step.buttons] : [];
 
-            // הזרקת "חזרה לתפריט" אוטומטית אם יש מקום
+            // הזרקת "חזרה לתפריט" אוטומטית אם יש פחות מ-3 כפתורים
             if (nextStepId !== "start" && buttons.length < 3) {
               buttons.push({ id: "start", title: "חזרה לתפריט ✨" });
             }
@@ -155,6 +167,13 @@ export async function onRequest({ request, env }) {
 
             if (session.isFirstTime) {
                 session.isFirstTime = false;
+                await env.SESSIONS_KV.put(from, JSON.stringify(session));
+            }
+
+            // אם הלקוחה סיימה את תהליך בחירת הטיפול (לחצה על בוטוקס, שפתיים וכו' תחת קביעת תור)
+            // נעביר את השיחה למצב נציג כדי שהבוט יפסיק לענות, ורינת תוכל להשתלט
+            if (nextStepId.startsWith("book_action_")) {
+                session.humanMode = true;
                 await env.SESSIONS_KV.put(from, JSON.stringify(session));
             }
           }
