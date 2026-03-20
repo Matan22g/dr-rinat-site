@@ -7,6 +7,30 @@ const DEFAULT_FLOW = {
 };
 
 // --- Helper Functions ---
+async function forwardAudioToTelegram(mediaId, threadId, caption, env) {
+  try {
+    const mediaRes = await fetch(`https://graph.facebook.com/v18.0/${mediaId}`, {
+      headers: { "Authorization": `Bearer ${env.WHATSAPP_TOKEN}` }
+    });
+    const mediaData = await mediaRes.json();
+    if (mediaData.url) {
+      const fileRes = await fetch(mediaData.url, { headers: { "Authorization": `Bearer ${env.WHATSAPP_TOKEN}` } });
+      const fileBlob = await fileRes.blob();
+      
+      const formData = new FormData();
+      formData.append("chat_id", env.TELEGRAM_CHAT_ID);
+      formData.append("message_thread_id", threadId);
+      formData.append("voice", fileBlob, "voice.ogg"); // טלגרם הכי אוהב ogg להקלטות
+      formData.append("caption", caption);
+      
+      await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendVoice`, {
+        method: "POST",
+        body: formData
+      });
+      return true;
+    }
+  } catch (e) { console.error("Audio forward error:", e); return false; }
+}
 
 async function sendWhatsApp(to, payload, env) {
   const url = `https://graph.facebook.com/v18.0/${env.PHONE_NUMBER_ID}/messages`;
@@ -129,6 +153,7 @@ export async function onRequest({ request, env }) {
           const isImage = msg.type === "image";
           const buttonId = isButton ? msg.interactive.button_reply.id : null;
           const customerText = isButton ? msg.interactive.button_reply.title : (msg.text?.body || "");
+          const isAudio = msg.type === "audio" || msg.type === "voice";
 
           console.log(`[Message Details] Type: ${msg.type}, Text: "${customerText}", Button ID: ${buttonId}`);
 
@@ -152,7 +177,9 @@ export async function onRequest({ request, env }) {
             console.log(`[Telegram] User clicked booking. Editing topic to 🔴`);
             await sendTelegram("editForumTopic", { message_thread_id: session.threadId, name: `🔴 ${currentName} (${from.slice(-4)})` }, env);
           }
-
+          if (isAudio) {
+              await forwardAudioToTelegram(msg.audio.id, session.threadId, `👤 הקלטה מאת: ${currentName}`, env);
+          }
           // עדכון טלגרם (שליחת ההודעה)
 // עדכון טלגרם (שליחת ההודעה)
           let sendRes;
