@@ -1,5 +1,4 @@
-// --- פונקציות עזר (Helper Functions) ---
-
+// --- פונקציות עזר (Helpers) ---
 async function sendWhatsApp(to, payload, env) {
   const url = `https://graph.facebook.com/v18.0/${env.PHONE_NUMBER_ID}/messages`;
   try {
@@ -24,8 +23,6 @@ async function sendTelegram(method, payload, env) {
   } catch (e) { return null; }
 }
 
-// --- המנוע הראשי ---
-
 export async function onRequest({ request, env }) {
   if (request.method === "GET") {
     const { searchParams } = new URL(request.url);
@@ -39,10 +36,12 @@ export async function onRequest({ request, env }) {
     try {
       const body = await request.json();
 
-      // 1. עדכון שם לקוחה (כדי שרינת תוכל לערוך שמות)
+      // 1. עדכון שם לקוחה (רק לצורך התצוגה של רינת בטלגרם)
       if (body.message?.forum_topic_edited) {
         const tid = body.message.message_thread_id;
-        const newRawName = body.message.forum_topic_edited.name.replace(/[✅🔴🆕]\s*/g, '').split(' (')[0].trim();
+        const newRawName = body.message.forum_topic_edited.name
+          .replace(/[✅🔴🆕]\s*/g, '')
+          .split(' (')[0].trim();
         await env.SESSIONS_KV.put(`name_${tid}`, newRawName);
         return new Response("OK", { status: 200 });
       }
@@ -50,18 +49,17 @@ export async function onRequest({ request, env }) {
       const value = body.entry?.[0]?.changes?.[0]?.value;
       const msg = value?.messages?.[0];
 
-      // 2. הודעה נכנסת מוואטסאפ (לקוחה)
       if (msg) {
         const from = msg.from;
         const rawName = value.contacts?.[0]?.profile?.name || "לקוחה";
         
         let session = await env.SESSIONS_KV.get(from, { type: "json" }) || { threadId: null, humanMode: false, name: rawName };
 
-        // פונקציית עזר ליצירת חדר (כדי שנוכל לקרוא לה גם בזמן תקלה)
         const createNewTopic = async () => {
           const topicRes = await sendTelegram("createForumTopic", { name: `🆕 ${rawName} (${from.slice(-4)})` }, env);
           if (topicRes?.ok) {
             session.threadId = topicRes.result.message_thread_id;
+            session.isFirstTime = true; // מסמן לשלוח תפריט ראשוני
             await env.SESSIONS_KV.put(from, JSON.stringify(session));
             await env.SESSIONS_KV.put(`name_${session.threadId}`, rawName);
             return true;
@@ -69,59 +67,46 @@ export async function onRequest({ request, env }) {
           return false;
         };
 
-        // אם אין חדר - יוצרים
-        if (!session.threadId) {
-          await createNewTopic();
-        }
+        if (!session.threadId) await createNewTopic();
 
         if (session.threadId) {
           const isButton = msg.type === "interactive";
-          const customerText = isButton ? msg.interactive.button_reply.title : (msg.text?.body || "שלחה הודעה");
+          const customerText = isButton ? msg.interactive.button_reply.title : (msg.text?.body || "");
           const buttonId = isButton ? msg.interactive.button_reply.id : null;
 
-          // איפוס מוד אנושי אם ביקשו תפריט
           if (["תפריט", "menu", "התחלה"].some(k => customerText.toLowerCase().includes(k))) {
             session.humanMode = false;
             await env.SESSIONS_KV.put(from, JSON.stringify(session));
           }
 
-          const currentName = (await env.SESSIONS_KV.get(`name_${session.threadId}`)) || session.name || rawName;
+          const currentNameForRinat = (await env.SESSIONS_KV.get(`name_${session.threadId}`)) || session.name || rawName;
 
-          // ניסיון שליחה לטלגרם
-          const isUrgent = buttonId === "human" || customerText.includes("דחוף");
-          let tgRes = await sendTelegram("sendMessage", {
+          // עדכון טלגרם (כאן היא כן רואה את השם)
+          await sendTelegram("sendMessage", {
             message_thread_id: session.threadId,
-            text: `👤 מאת: ${currentName}\n💬 הודעה: ${customerText}\n\nPhone: ${from}`,
-            disable_notification: !isUrgent
+            text: `👤 מאת: ${currentNameForRinat}\n💬 הודעה: ${customerText}\n\nPhone: ${from}`
           }, env);
 
-          // --- מנגנון תיקון עצמי ---
-          // אם השליחה נכשלה (למשל כי החדר נמחק), יוצרים חדר חדש ושולחים שוב
-          if (!tgRes?.ok) {
-            console.log("[FIX] Topic not found, creating new one...");
-            const created = await createNewTopic();
-            if (created) {
-              await sendTelegram("sendMessage", {
-                message_thread_id: session.threadId,
-                text: `👤 מאת: ${currentName}\n💬 הודעה: ${customerText}\n\nPhone: ${from}`
-              }, env);
-            }
-          }
-
-          // לוגיקת תגובה לוואטסאפ
+          // תגובות וואטסאפ (כאן הורדנו את השם האישי)
           if (buttonId === "human") {
             session.humanMode = true;
             await env.SESSIONS_KV.put(from, JSON.stringify(session));
-            await sendTelegram("editForumTopic", { message_thread_id: session.threadId, name: `🔴 ${currentName} (${from.slice(-4)})` }, env);
-            await sendWhatsApp(from, { text: { body: "הודעה הועברה לרינת, היא תחזור אלייך בקרוב! ❤️" } }, env);
+            await sendTelegram("editForumTopic", { message_thread_id: session.threadId, name: `🔴 ${currentNameForRinat} (${from.slice(-4)})` }, env);
+            await sendWhatsApp(from, { text: { body: "ההודעה הועברה לרינת, היא תחזור אלייך בהקדם! ❤️" } }, env);
           } 
-          else if (!session.humanMode && (customerText.toLowerCase().includes("תפריט") || session.isFirstTime)) {
+          else if (session.isFirstTime || customerText.toLowerCase().includes("תפריט")) {
+            // מאפסים את ה-Flag כדי שלא ישלח תפריט כל פעם
+            if (session.isFirstTime) {
+                session.isFirstTime = false;
+                await env.SESSIONS_KV.put(from, JSON.stringify(session));
+            }
+
             await sendWhatsApp(from, {
               type: "interactive",
               interactive: {
                 type: "button",
-                header: { type: "text", text: `שלום ${currentName}! ✨` },
-                body: { text: "ברוכה הבאה לקליניקה. במה נוכל לעזור היום?" },
+                header: { type: "text", text: "שלום! ✨" }, // פנייה גנרית ונקייה
+                body: { text: "ברוכה הבאה לקליניקה של ד״ר רינת. במה נוכל לעזור היום?" },
                 action: { buttons: [
                   { type: "reply", reply: { id: "book", title: "תיאום תור 📅" } },
                   { type: "reply", reply: { id: "info", title: "טיפולים ומחירים 💉" } },
@@ -133,23 +118,20 @@ export async function onRequest({ request, env }) {
         }
       }
 
-      // 3. רינת עונה מטלגרם
       else if (body.message?.reply_to_message) {
         const threadId = body.message.message_thread_id;
         const phoneMatch = body.message.reply_to_message.text.match(/Phone:\s*(\d+)/);
 
         if (phoneMatch) {
           const customerPhone = phoneMatch[1];
-          const waRes = await sendWhatsApp(customerPhone, { text: { body: body.message.text } }, env);
+          await sendWhatsApp(customerPhone, { text: { body: body.message.text } }, env);
           
-          if (waRes?.messages) {
-            let session = await env.SESSIONS_KV.get(customerPhone, { type: "json" }) || {};
-            session.humanMode = true;
-            await env.SESSIONS_KV.put(customerPhone, JSON.stringify(session));
+          let session = await env.SESSIONS_KV.get(customerPhone, { type: "json" }) || {};
+          session.humanMode = true;
+          await env.SESSIONS_KV.put(customerPhone, JSON.stringify(session));
 
-            const currentName = (await env.SESSIONS_KV.get(`name_${threadId}`)) || "לקוחה";
-            await sendTelegram("editForumTopic", { message_thread_id: threadId, name: `✅ ${currentName} (${customerPhone.slice(-4)})` }, env);
-          }
+          const currentNameForRinat = (await env.SESSIONS_KV.get(`name_${threadId}`)) || "לקוחה";
+          await sendTelegram("editForumTopic", { message_thread_id: threadId, name: `✅ ${currentNameForRinat} (${customerPhone.slice(-4)})` }, env);
         }
       }
     } catch (e) { console.error(e); }
