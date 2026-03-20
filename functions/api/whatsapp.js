@@ -50,25 +50,27 @@ export async function onRequest({ request, env }) {
           }
         }
       }
-      // Handle incoming Telegram Webhook payloads
+// Handle incoming Telegram Webhook payloads
       else if (body.update_id && body.message) {
+        console.log(">>> TELEGRAM WEBHOOK RECEIVED <<<");
         const message = body.message;
 
         // Process only if it's a reply to an existing message and contains text
         if (message.reply_to_message && message.text && message.reply_to_message.text) {
           const originalText = message.reply_to_message.text;
-          
-          // Extract the customer's phone number
           const phoneMatch = originalText.match(/Phone:\s*(\d+)/);
 
           if (phoneMatch && phoneMatch[1]) {
             const extractedPhoneNumber = phoneMatch[1];
+            console.log("Extracted Phone:", extractedPhoneNumber);
+            
             const replyText = message.text;
             const metaApiUrl = `https://graph.facebook.com/v18.0/${env.PHONE_NUMBER_ID}/messages`;
 
             // Send reply to Meta Graph API
             try {
-              await fetch(metaApiUrl, {
+              console.log("Sending to Meta API...");
+              const metaRes = await fetch(metaApiUrl, {
                 method: "POST",
                 headers: {
                   "Authorization": `Bearer ${env.WHATSAPP_TOKEN}`,
@@ -80,10 +82,19 @@ export async function onRequest({ request, env }) {
                   text: { body: replyText },
                 }),
               });
+              
+              const responseData = await metaRes.json();
+              console.log("META API STATUS:", metaRes.status);
+              console.log("META API RESPONSE:", JSON.stringify(responseData));
+              
             } catch (metaErr) {
-              console.error("Error sending message to Meta API:", metaErr);
+              console.error("Fetch network error:", metaErr);
             }
+          } else {
+            console.log("Regex failed to find phone number in:", originalText);
           }
+        } else {
+          console.log("Not a reply or missing text.");
         }
       }
     } catch (err) {
