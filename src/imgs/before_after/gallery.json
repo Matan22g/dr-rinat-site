@@ -1,52 +1,22 @@
 [
   {
     "category": "lips",
-    "id": "008",
-    "before": "lips_008_mobile_before.webp",
-    "after": "lips_008_mobile_after.webp",
-    "desktop_before": "lips_008_desktop_before.webp",
-    "desktop_after": "lips_008_desktop_after.webp",
-    "featured": true,
-    "hidden": false
-  },
-  {
-    "category": "botox",
-    "id": "005",
-    "before": "botox_005_mobile_before.webp",
-    "after": "botox_005_mobile_after.webp",
-    "desktop_before": "botox_005_desktop_before.webp",
-    "desktop_after": "botox_005_desktop_after.webp",
+    "id": "14",
+    "before": "lips_14_mobile_before.webp",
+    "after": "lips_14_mobile_after.webp",
+    "desktop_before": "lips_14_desktop_before.webp",
+    "desktop_after": "lips_14_desktop_after.webp",
     "featured": true,
     "hidden": false
   },
   {
     "category": "lips",
-    "id": "009",
-    "before": "lips_009_mobile_before.webp",
-    "after": "lips_009_mobile_after.webp",
-    "desktop_before": "lips_009_desktop_before.webp",
-    "desktop_after": "lips_009_desktop_after.webp",
-    "featured": true,
-    "hidden": false
-  },
-  {
-    "category": "face",
-    "id": "001",
-    "before": "face_001_mobile_before.webp",
-    "after": "face_001_mobile_after.webp",
-    "desktop_before": "face_001_desktop_before.webp",
-    "desktop_after": "face_001_desktop_after.webp",
-    "featured": true,
-    "hidden": false
-  },
-  {
-    "category": "lips",
-    "id": "007",
-    "before": "lips_007_mobile_before.webp",
-    "after": "lips_007_mobile_after.webp",
-    "desktop_before": "lips_007_desktop_before.webp",
-    "desktop_after": "lips_007_desktop_after.webp",
-    "featured": true,
+    "id": "13",
+    "before": "lips_13_mobile_before.webp",
+    "after": "lips_13_mobile_after.webp",
+    "desktop_before": "lips_13_desktop_before.webp",
+    "desktop_after": "lips_13_desktop_after.webp",
+    "featured": false,
     "hidden": false
   },
   {
@@ -56,56 +26,6 @@
     "after": "botox_004_mobile_after.webp",
     "desktop_before": "botox_004_desktop_before.webp",
     "desktop_after": "botox_004_desktop_after.webp",
-    "featured": false,
-    "hidden": false
-  },
-  {
-    "category": "botox",
-    "id": "007",
-    "before": "botox_007_mobile_before.webp",
-    "after": "botox_007_mobile_after.webp",
-    "desktop_before": "botox_007_desktop_before.webp",
-    "desktop_after": "botox_007_desktop_after.webp",
-    "featured": false,
-    "hidden": false
-  },
-  {
-    "category": "lips",
-    "id": "004",
-    "before": "lips_004_mobile_before.webp",
-    "after": "lips_004_mobile_after.webp",
-    "desktop_before": "lips_004_desktop_before.webp",
-    "desktop_after": "lips_004_desktop_after.webp",
-    "featured": false,
-    "hidden": false
-  },
-  {
-    "category": "lips",
-    "id": "002",
-    "before": "lips_002_mobile_before.webp",
-    "after": "lips_002_mobile_after.webp",
-    "desktop_before": "lips_002_desktop_before.webp",
-    "desktop_after": "lips_002_desktop_after.webp",
-    "featured": false,
-    "hidden": false
-  },
-  {
-    "category": "jawline",
-    "id": "002",
-    "before": "jawline_002_mobile_before.webp",
-    "after": "jawline_002_mobile_after.webp",
-    "desktop_before": "jawline_002_desktop_before.webp",
-    "desktop_after": "jawline_002_desktop_after.webp",
-    "featured": false,
-    "hidden": false
-  },
-  {
-    "category": "botox",
-    "id": "002",
-    "before": "botox_002_mobile_before.webp",
-    "after": "botox_002_mobile_after.webp",
-    "desktop_before": "botox_002_desktop_before.webp",
-    "desktop_after": "botox_002_desktop_after.webp",
     "featured": false,
     "hidden": false
   },
@@ -121,21 +41,11 @@
   },
   {
     "category": "botox",
-    "id": "006",
-    "before": "botox_006_mobile_before.webp",
-    "after": "botox_006_mobile_after.webp",
-    "desktop_before": "botox_006_desktop_before.webp",
-    "desktop_after": "botox_006_desktop_after.webp",
-    "featured": false,
-    "hidden": false
-  },
-  {
-    "category": "jawline",
-    "id": "001",
-    "before": "jawline_001_mobile_before.webp",
-    "after": "jawline_001_mobile_after.webp",
-    "desktop_before": "jawline_001_desktop_before.webp",
-    "desktop_after": "jawline_001_desktop_after.webp",
+    "id": "002",
+    "before": "botox_002_mobile_before.webp",
+    "after": "botox_002_mobile_after.webp",
+    "desktop_before": "botox_002_desktop_before.webp",
+    "desktop_after": "botox_002_desktop_after.webp",
     "featured": false,
     "hidden": false
   },
@@ -151,6 +61,46 @@
   },
   {
     "category": "botox",
+    "id": "005",
+    "before": "botox_005_mobile_before.webp",
+    "after": "botox_005_mobile_after.webp",
+    "desktop_before": "botox_005_desktop_before.webp",
+    "desktop_after": "botox_005_desktop_after.webp",
+    "featured": true,
+    "hidden": false
+  },
+  {
+    "category": "salmon",
+    "id": "1",
+    "before": "salmon_1_mobile_before.webp",
+    "after": "salmon_1_mobile_after.webp",
+    "desktop_before": "salmon_1_desktop_before.webp",
+    "desktop_after": "salmon_1_desktop_after.webp",
+    "featured": false,
+    "hidden": false
+  },
+  {
+    "category": "botox",
+    "id": "006",
+    "before": "botox_006_mobile_before.webp",
+    "after": "botox_006_mobile_after.webp",
+    "desktop_before": "botox_006_desktop_before.webp",
+    "desktop_after": "botox_006_desktop_after.webp",
+    "featured": false,
+    "hidden": false
+  },
+  {
+    "category": "botox",
+    "id": "007",
+    "before": "botox_007_mobile_before.webp",
+    "after": "botox_007_mobile_after.webp",
+    "desktop_before": "botox_007_desktop_before.webp",
+    "desktop_after": "botox_007_desktop_after.webp",
+    "featured": false,
+    "hidden": false
+  },
+  {
+    "category": "botox",
     "id": "008",
     "before": "botox_008_mobile_before.webp",
     "after": "botox_008_mobile_after.webp",
@@ -160,12 +110,52 @@
     "hidden": false
   },
   {
+    "category": "face",
+    "id": "001",
+    "before": "face_001_mobile_before.webp",
+    "after": "face_001_mobile_after.webp",
+    "desktop_before": "face_001_desktop_before.webp",
+    "desktop_after": "face_001_desktop_after.webp",
+    "featured": true,
+    "hidden": false
+  },
+  {
+    "category": "jawline",
+    "id": "001",
+    "before": "jawline_001_mobile_before.webp",
+    "after": "jawline_001_mobile_after.webp",
+    "desktop_before": "jawline_001_desktop_before.webp",
+    "desktop_after": "jawline_001_desktop_after.webp",
+    "featured": false,
+    "hidden": false
+  },
+  {
+    "category": "jawline",
+    "id": "002",
+    "before": "jawline_002_mobile_before.webp",
+    "after": "jawline_002_mobile_after.webp",
+    "desktop_before": "jawline_002_desktop_before.webp",
+    "desktop_after": "jawline_002_desktop_after.webp",
+    "featured": false,
+    "hidden": false
+  },
+  {
     "category": "lips",
-    "id": "006",
-    "before": "lips_006_mobile_before.webp",
-    "after": "lips_006_mobile_after.webp",
-    "desktop_before": "lips_006_desktop_before.webp",
-    "desktop_after": "lips_006_desktop_after.webp",
+    "id": "001",
+    "before": "lips_001_mobile_before.webp",
+    "after": "lips_001_mobile_after.webp",
+    "desktop_before": "lips_001_desktop_before.webp",
+    "desktop_after": "lips_001_desktop_after.webp",
+    "featured": false,
+    "hidden": false
+  },
+  {
+    "category": "lips",
+    "id": "002",
+    "before": "lips_002_mobile_before.webp",
+    "after": "lips_002_mobile_after.webp",
+    "desktop_before": "lips_002_desktop_before.webp",
+    "desktop_after": "lips_002_desktop_after.webp",
     "featured": false,
     "hidden": false
   },
@@ -181,6 +171,16 @@
   },
   {
     "category": "lips",
+    "id": "004",
+    "before": "lips_004_mobile_before.webp",
+    "after": "lips_004_mobile_after.webp",
+    "desktop_before": "lips_004_desktop_before.webp",
+    "desktop_after": "lips_004_desktop_after.webp",
+    "featured": false,
+    "hidden": false
+  },
+  {
+    "category": "lips",
     "id": "005",
     "before": "lips_005_mobile_before.webp",
     "after": "lips_005_mobile_after.webp",
@@ -191,12 +191,42 @@
   },
   {
     "category": "lips",
-    "id": "001",
-    "before": "lips_001_mobile_before.webp",
-    "after": "lips_001_mobile_after.webp",
-    "desktop_before": "lips_001_desktop_before.webp",
-    "desktop_after": "lips_001_desktop_after.webp",
+    "id": "006",
+    "before": "lips_006_mobile_before.webp",
+    "after": "lips_006_mobile_after.webp",
+    "desktop_before": "lips_006_desktop_before.webp",
+    "desktop_after": "lips_006_desktop_after.webp",
     "featured": false,
+    "hidden": false
+  },
+  {
+    "category": "lips",
+    "id": "007",
+    "before": "lips_007_mobile_before.webp",
+    "after": "lips_007_mobile_after.webp",
+    "desktop_before": "lips_007_desktop_before.webp",
+    "desktop_after": "lips_007_desktop_after.webp",
+    "featured": true,
+    "hidden": false
+  },
+  {
+    "category": "lips",
+    "id": "008",
+    "before": "lips_008_mobile_before.webp",
+    "after": "lips_008_mobile_after.webp",
+    "desktop_before": "lips_008_desktop_before.webp",
+    "desktop_after": "lips_008_desktop_after.webp",
+    "featured": false,
+    "hidden": true
+  },
+  {
+    "category": "lips",
+    "id": "009",
+    "before": "lips_009_mobile_before.webp",
+    "after": "lips_009_mobile_after.webp",
+    "desktop_before": "lips_009_desktop_before.webp",
+    "desktop_after": "lips_009_desktop_after.webp",
+    "featured": true,
     "hidden": false
   },
   {
