@@ -154,19 +154,43 @@ export async function onRequest({ request, env }) {
           }
 
           // עדכון טלגרם (שליחת ההודעה)
+// עדכון טלגרם (שליחת ההודעה)
+          let sendRes;
           if (isImage) {
             console.log(`[Telegram] Forwarding image to thread ${session.threadId}...`);
-            const imgRes = await forwardImageToTelegram(msg.image.id, session.threadId, `👤 מאת: ${currentName}\n🖼️ תמונה\n\nPhone: ${from}`, env);
-            console.log(`[Telegram] Image forward result:`, imgRes);
+            await forwardImageToTelegram(msg.image.id, session.threadId, `👤 מאת: ${currentName}\n🖼️ תמונה\n\nPhone: ${from}`, env);
           } else {
             console.log(`[Telegram] Forwarding text message to thread ${session.threadId}...`);
-            const sendRes = await sendTelegram("sendMessage", {
+            sendRes = await sendTelegram("sendMessage", {
               message_thread_id: session.threadId,
               text: `👤 מאת: ${currentName}\n💬 הודעה: ${customerText}\n\nPhone: ${from}`,
               disable_notification: !(isHumanClick || isBookingClick || isUrgent)
             }, env);
             console.log(`[Telegram] sendMessage raw response:`, JSON.stringify(sendRes));
           }
+
+          // ===== מנגנון התאוששות (Auto-Recovery) =====
+          // אם רינת מחקה את הטופיק בטלגרם, נייצר אחד חדש אוטומטית!
+          if (sendRes?.ok === false && sendRes?.description?.includes("thread not found")) {
+            console.log(`[Recovery] ⚠️ Topic ${session.threadId} was deleted! Creating a new one...`);
+            session.threadId = null; // מאפסים את הטופיק הישן
+            const created = await createNewTopic(); // יוצרים חדש
+            
+            if (created) {
+              console.log(`[Recovery] ✅ New topic created (${session.threadId}). Resending message...`);
+              await sendTelegram("sendMessage", {
+                  message_thread_id: session.threadId,
+                  text: `👤 מאת: ${currentName}\n💬 הודעה: ${customerText} (שוחזר)\n\nPhone: ${from}`,
+                  disable_notification: !(isHumanClick || isBookingClick || isUrgent)
+              }, env);
+
+              // נעדכן גם את הסטטוס לאדום אם זו הייתה לחיצה על קביעת תור
+              if (isBookingClick || isHumanClick) {
+                 await sendTelegram("editForumTopic", { message_thread_id: session.threadId, name: `🔴 ${currentName} (${from.slice(-4)})` }, env);
+              }
+            }
+          }
+          // ==========================================
 
           // תגובה אוטומטית לוואטסאפ (Decision Tree)
           if (isHumanClick) {
