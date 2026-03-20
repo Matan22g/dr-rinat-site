@@ -154,12 +154,14 @@ export async function onRequest({ request, env }) {
             if (nextStepId !== "start" && buttons.length < 3) {
               buttons.push({ id: "start", title: "חזרה לתפריט ✨" });
             }
+// שולף את הכותרת מה-JSON, ואם אין - משתמש בברירת מחדל
+            const headerText = step.header || "ד״ר רינת - אסתטיקה";
 
             await sendWhatsApp(from, {
               type: "interactive",
               interactive: {
                 type: "button",
-                header: { type: "text", text: "ד״ר רינת - אסתטיקה" },
+                header: { type: "text", text: headerText },
                 body: { text: step.text },
                 action: { buttons: buttons.slice(0, 3).map(b => ({ type: "reply", reply: b })) }
               }
