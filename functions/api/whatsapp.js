@@ -31,6 +31,30 @@ async function forwardAudioToTelegram(mediaId, threadId, caption, env) {
     }
   } catch (e) { console.error("Audio forward error:", e); return false; }
 }
+async function getTelegramFile(fileId, env) {
+  // 1. מבקשים מטלגרם את הנתיב של הקובץ
+  const res = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/getFile?file_id=${fileId}`);
+  const { result } = await res.json();
+  
+  // 2. מורידים את הקובץ עצמו
+  const fileRes = await fetch(`https://api.telegram.org/file/bot${env.TELEGRAM_BOT_TOKEN}/${result.file_path}`);
+  return await fileRes.blob();
+}
+
+async function uploadToWhatsApp(blob, env) {
+  const formData = new FormData();
+  formData.append("file", blob, "voice.ogg");
+  formData.append("messaging_product", "whatsapp");
+  formData.append("type", "audio/ogg; codecs=opus");
+
+  const res = await fetch(`https://graph.facebook.com/v18.0/${env.PHONE_NUMBER_ID}/media`, {
+    method: "POST",
+    headers: { "Authorization": `Bearer ${env.WHATSAPP_TOKEN}` },
+    body: formData
+  });
+  const data = await res.json();
+  return data.id; // מחזיר את ה-media_id
+}
 
 async function sendWhatsApp(to, payload, env) {
   const url = `https://graph.facebook.com/v18.0/${env.PHONE_NUMBER_ID}/messages`;
@@ -286,17 +310,43 @@ export async function onRequest({ request, env }) {
 
         if (phoneMatch) {
           const customerPhone = phoneMatch[1];
-          console.log(`[WhatsApp] Sending reply to customer phone: ${customerPhone}`);
-          const waRes = await sendWhatsApp(customerPhone, { text: { body: body.message.text } }, env);
-          console.log(`[WhatsApp] Reply response:`, JSON.stringify(waRes));
+          const isVoice = body.message.voice;
+          let waRes;
 
-          if (waRes?.messages) {
-            let session = await env.SESSIONS_KV.get(customerPhone, { type: "json" }) || {};
-            session.humanMode = true;
-            await env.SESSIONS_KV.put(customerPhone, JSON.stringify(session));
-            const currentName = (await env.SESSIONS_KV.get(`name_${threadId}`)) || "לקוחה";
-            await sendTelegram("editForumTopic", { message_thread_id: threadId, name: `✅ ${currentName} (${customerPhone.slice(-4)})` }, env);
-            console.log(`[Telegram] Topic edited to ✅`);
+          try {
+            if (isVoice) {
+              // --- טיפול בהקלטה מרינתי ---
+              console.log(`[Telegram] Rinat sent a voice note. Processing file...`);
+              const audioBlob = await getTelegramFile(body.message.voice.file_id, env);
+              const mediaId = await uploadToWhatsApp(audioBlob, env);
+              
+              console.log(`[WhatsApp] Sending voice note to ${customerPhone} (Media ID: ${mediaId})`);
+              waRes = await sendWhatsApp(customerPhone, { 
+                type: "audio", 
+                audio: { id: mediaId } 
+              }, env);
+            } else {
+              // --- טיפול בטקסט רגיל ---
+              console.log(`[WhatsApp] Sending text reply to: ${customerPhone}`);
+              waRes = await sendWhatsApp(customerPhone, { text: { body: body.message.text } }, env);
+            }
+
+            console.log(`[WhatsApp] Reply response:`, JSON.stringify(waRes));
+
+            if (waRes?.messages) {
+              let session = await env.SESSIONS_KV.get(customerPhone, { type: "json" }) || {};
+              session.humanMode = true;
+              await env.SESSIONS_KV.put(customerPhone, JSON.stringify(session));
+              
+              const currentName = (await env.SESSIONS_KV.get(`name_${threadId}`)) || "לקוחה";
+              await sendTelegram("editForumTopic", { 
+                message_thread_id: threadId, 
+                name: `✅ ${currentName} (${customerPhone.slice(-4)})` 
+              }, env);
+              console.log(`[Telegram] Topic edited to ✅`);
+            }
+          } catch (err) {
+            console.error("[Error] Failed to process Rinat's reply:", err);
           }
         } else {
           console.log(`[Logic] Could not extract phone number from replied message.`);
