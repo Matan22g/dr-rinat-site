@@ -50,11 +50,48 @@ export async function onRequest({ request, env }) {
           }
         }
       }
+      // Handle incoming Telegram Webhook payloads
+      else if (body.update_id && body.message) {
+        const message = body.message;
+
+        // Process only if it's a reply to an existing message and contains text
+        if (message.reply_to_message && message.text && message.reply_to_message.text) {
+          const originalText = message.reply_to_message.text;
+          
+          // Extract the customer's phone number
+          const phoneMatch = originalText.match(/Phone:\s*(\d+)/);
+
+          if (phoneMatch && phoneMatch[1]) {
+            const extractedPhoneNumber = phoneMatch[1];
+            const replyText = message.text;
+            const metaApiUrl = `https://graph.facebook.com/v18.0/${env.PHONE_NUMBER_ID}/messages`;
+
+            // Send reply to Meta Graph API
+            try {
+              await fetch(metaApiUrl, {
+                method: "POST",
+                headers: {
+                  "Authorization": `Bearer ${env.WHATSAPP_TOKEN}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  messaging_product: "whatsapp",
+                  to: extractedPhoneNumber,
+                  text: { body: replyText },
+                }),
+              });
+            } catch (metaErr) {
+              console.error("Error sending message to Meta API:", metaErr);
+            }
+          }
+        }
+      }
     } catch (err) {
       console.error("Webhook processing error:", err);
     }
 
     // ALWAYS return 200 OK to Meta, regardless of internal success
+    // ALWAYS return 200 OK to Meta and Telegram, regardless of internal success
     return new Response("OK", { status: 200 });
   }
 
