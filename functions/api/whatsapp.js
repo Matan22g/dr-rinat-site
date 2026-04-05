@@ -170,7 +170,7 @@ export async function onRequest({ request, env }) {
           }
 
           const currentName = (await env.SESSIONS_KV.get(`name_${session.threadId}`)) || session.name || rawName;
-          
+
           const isUrgent = customerText.includes("דחוף");
           const disableNotification = !(buttonId === "human" || buttonId === "main_booking" || isUrgent || session.humanMode);
 
@@ -202,7 +202,7 @@ export async function onRequest({ request, env }) {
             await sendTelegram("editForumTopic", { message_thread_id: session.threadId, name: `🔴 ${currentName} (${from.slice(-4)})` }, env);
             await sendWhatsApp(from, { text: { body: "ההודעה הועברה לרינת, היא תחזור אלייך בהקדם! ❤️" } }, env);
           } else if (buttonId === "main_booking") {
-             await sendTelegram("editForumTopic", { message_thread_id: session.threadId, name: `🔴 ${currentName} (${from.slice(-4)})` }, env);
+            await sendTelegram("editForumTopic", { message_thread_id: session.threadId, name: `🔴 ${currentName} (${from.slice(-4)})` }, env);
           }
 
           if (!session.humanMode && nextStepId && BOT_FLOW[nextStepId]) {
@@ -240,7 +240,34 @@ export async function onRequest({ request, env }) {
           let waRes;
 
           try {
-            if (isVoice) {
+            if (textContent === "/1") {
+              waRes = await sendWhatsApp(customerPhone, {
+                type: "template", template: { name: "ping_thinking", language: { code: "he" } }
+              }, env);
+            }
+            else if (textContent === "/2") {
+              waRes = await sendWhatsApp(customerPhone, {
+                type: "template", template: { name: "ping_ghost", language: { code: "he" } }
+              }, env);
+            }
+            else if (textContent === "/3") {
+              waRes = await sendWhatsApp(customerPhone, {
+                type: "template", template: { name: "ping_later", language: { code: "he" } }
+              }, env);
+            }
+            else if (textContent.startsWith("/4 ")) {
+              // חילוץ השעה מהפקודה (למשל "/4 10:30")
+              const timeString = textContent.replace("/4 ", "").trim();
+              waRes = await sendWhatsApp(customerPhone, {
+                type: "template",
+                template: {
+                  name: "appointment_reminder",
+                  language: { code: "he" },
+                  components: [{ type: "body", parameters: [{ type: "text", text: timeString }] }]
+                }
+              }, env);
+            }
+            else if (isVoice) {
               const audioBlob = await getTelegramFile(body.message.voice.file_id, env);
               const mediaId = await uploadToWhatsApp(audioBlob, env);
               waRes = await sendWhatsApp(customerPhone, { type: "audio", audio: { id: mediaId } }, env);
