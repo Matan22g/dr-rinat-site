@@ -237,6 +237,7 @@ export async function onRequest({ request, env }) {
         if (phoneMatch) {
           const customerPhone = phoneMatch[1];
           const isVoice = body.message.voice;
+          const textContent = body.message.text ? body.message.text.trim() : "";
           let waRes;
 
           try {
@@ -272,7 +273,7 @@ export async function onRequest({ request, env }) {
               const mediaId = await uploadToWhatsApp(audioBlob, env);
               waRes = await sendWhatsApp(customerPhone, { type: "audio", audio: { id: mediaId } }, env);
             } else {
-              waRes = await sendWhatsApp(customerPhone, { text: { body: body.message.text } }, env);
+              waRes = await sendWhatsApp(customerPhone, { text: { body: textContent } }, env);
             }
 
             if (waRes?.messages) {
