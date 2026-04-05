@@ -243,17 +243,17 @@ export async function onRequest({ request, env }) {
           try {
             if (textContent === "/1") {
               waRes = await sendWhatsApp(customerPhone, {
-                type: "template", template: { name: "ping_thinking", language: { code: "he" } }
+                type: "template", template: { name: "ping_think", language: { code: "he" } }
               }, env);
             }
             else if (textContent === "/2") {
               waRes = await sendWhatsApp(customerPhone, {
-                type: "template", template: { name: "ping_ghost", language: { code: "he" } }
+                type: "template", template: { name: "ping_still_relevant", language: { code: "he" } }
               }, env);
             }
             else if (textContent === "/3") {
               waRes = await sendWhatsApp(customerPhone, {
-                type: "template", template: { name: "ping_later", language: { code: "he" } }
+                type: "template", template: { name: "ping_not_returned", language: { code: "he" } }
               }, env);
             }
             else if (textContent.startsWith("/4 ")) {
