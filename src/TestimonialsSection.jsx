@@ -32,7 +32,6 @@ const TestimonialsSection = () => {
                   </div>
                   <div>
                     <h3 className="font-bold text-[#2E2A35] text-lg">{review.name}</h3>
-                    <span className="text-xs text-gray-400">{review.date}</span>
                   </div>
                 </div>
 
