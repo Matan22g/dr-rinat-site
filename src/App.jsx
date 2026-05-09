@@ -166,7 +166,7 @@ const CATEGORY_TITLES = {
 };
 
 const App = () => {
-const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [selectedTreatment, setSelectedTreatment] = useState(null);
   const [isLegalModalOpen, setIsLegalModalOpen] = useState(false);
@@ -180,8 +180,8 @@ const [isMenuOpen, setIsMenuOpen] = useState(false);
         beforeSrc: new URL(`./imgs/before_after/${item.before}`, import.meta.url).href,
         afterSrc: new URL(`./imgs/before_after/${item.after}`, import.meta.url).href,
         beforeDesktopSrc: item.desktop_before ? new URL(`./imgs/before_after/${item.desktop_before}`, import.meta.url).href : null,
-        afterDesktopSrc: item.desktop_after ? new URL(`./imgs/before_after/${item.desktop_after}`, import.meta.url).href : null,          
-        title: CATEGORY_TITLES[item.category] || item.category, 
+        afterDesktopSrc: item.desktop_after ? new URL(`./imgs/before_after/${item.desktop_after}`, import.meta.url).href : null,
+        title: CATEGORY_TITLES[item.category] || item.category,
         desc: 'החליקי לראות את השינוי'
       }));
     } catch (error) {
@@ -193,14 +193,14 @@ const [isMenuOpen, setIsMenuOpen] = useState(false);
   // --- Accessibility Script Loader ---
   useEffect(() => {
     if (navigator.userAgent.includes("HeadlessChrome")) return;
-    
+
     const SCRIPT_ID = 'enable-accessibility-script';
 
     if (document.getElementById(SCRIPT_ID)) return;
 
-    const isProduction = window.location.hostname !== 'localhost' && 
-                         window.location.hostname !== '127.0.0.1' &&
-                         !window.location.hostname.startsWith('192.168');
+    const isProduction = window.location.hostname !== 'localhost' &&
+      window.location.hostname !== '127.0.0.1' &&
+      !window.location.hostname.startsWith('192.168');
 
     const script = document.createElement('script');
     script.id = SCRIPT_ID;
@@ -229,17 +229,17 @@ const [isMenuOpen, setIsMenuOpen] = useState(false);
 
     const setAppHeight = () => {
       const currentHeight = window.innerHeight;
-      
+
       if (Math.abs(currentHeight - lastHeight) > 1) {
         document.documentElement.style.setProperty('--app-height', `${currentHeight}px`);
         lastHeight = currentHeight;
       }
     };
-    
+
     setAppHeight();
-    
+
     window.addEventListener('resize', setAppHeight);
-    
+
     return () => window.removeEventListener('resize', setAppHeight);
   }, []);
 
@@ -248,19 +248,21 @@ const [isMenuOpen, setIsMenuOpen] = useState(false);
     setIsLegalModalOpen(true);
   };
 
-// --- Scroll Detection for Header Styling ---
+  // --- Scroll Detection for Header Styling ---
   useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 0);
+    const handleScroll = (e) => {
+      // Safely check window scroll, or fallback to the specific container's scroll position
+      const currentScroll = window.scrollY || document.documentElement.scrollTop || (e && e.target && e.target.scrollTop) || 0;
+      setIsScrolled(currentScroll > 0);
     };
-    
-    // Fire immediately on mount to catch users who load halfway down the page
-    handleScroll(); 
-    
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+
+    handleScroll();
+
+    // The 'true' argument enables the capture phase, catching all scroll events
+    window.addEventListener('scroll', handleScroll, true);
+    return () => window.removeEventListener('scroll', handleScroll, true);
   }, []);
-  
+
   const handleScrollTo = (e, href) => {
     e.preventDefault();
 
@@ -277,7 +279,7 @@ const [isMenuOpen, setIsMenuOpen] = useState(false);
   };
 
   return (
-    <div dir="rtl" className="h-full min-h-[var(--app-height,100vh)] bg-[#FDFBFE] text-[#2E2A35] font-sans selection:bg-[#9E8FB2]/30">
+    <div dir="rtl" className="min-h-[var(--app-height,100vh)] overflow-x-hidden bg-[#FDFBFE] text-[#2E2A35] font-sans selection:bg-[#9E8FB2]/30">
 
       {/* --- SEO Helmet --- */}
       <Helmet>
@@ -294,8 +296,8 @@ const [isMenuOpen, setIsMenuOpen] = useState(false);
       {/* --- Header --- */}
       <header
         className={`fixed top-0 w-full z-50 transition-all duration-300 ${isScrolled || isMenuOpen
-            ? 'bg-[#FDFBFE]/95 backdrop-blur-md border-b border-[#F3F0F7] shadow-sm py-0'
-            : 'bg-transparent py-2'
+          ? 'bg-[#FDFBFE]/95 backdrop-blur-md border-b border-[#F3F0F7] shadow-sm py-0'
+          : 'bg-transparent py-2'
           }`}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -330,6 +332,7 @@ const [isMenuOpen, setIsMenuOpen] = useState(false);
             {/* Mobile Menu Button */}
             <div className="md:hidden">
               <button
+                type="button"
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
                 className="text-[#2E2A35] p-2 focus:outline-none hover:bg-gray-100 rounded-full transition-colors"
                 aria-label="Toggle menu"
