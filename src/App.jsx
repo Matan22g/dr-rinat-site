@@ -248,15 +248,19 @@ const [isMenuOpen, setIsMenuOpen] = useState(false);
     setIsLegalModalOpen(true);
   };
 
-  // --- Scroll Detection for Header Styling ---
+// --- Scroll Detection for Header Styling ---
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 0);
     };
+    
+    // Fire immediately on mount to catch users who load halfway down the page
+    handleScroll(); 
+    
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
-
+  
   const handleScrollTo = (e, href) => {
     e.preventDefault();
 
