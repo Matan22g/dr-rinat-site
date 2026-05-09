@@ -171,9 +171,16 @@ const App = () => {
   const [selectedTreatment, setSelectedTreatment] = useState(null);
   const [isLegalModalOpen, setIsLegalModalOpen] = useState(false);
   const [legalModalSection, setLegalModalSection] = useState('');
+  const [isHydrated, setIsHydrated] = useState(false); // <--- New state
+
+  // Set hydrated to true once the component mounts in the browser
+  useEffect(() => {
+    setIsHydrated(true);
+  }, []);
 
   // --- Load Gallery Data (Synchronous for SEO) ---
   const [comparisonImages] = useState(() => {
+    // ... (keep the same logic you have here)
     try {
       const featuredItems = galleryData.filter(item => item.featured === true && !item.hidden);
       return featuredItems.map(item => ({
@@ -185,7 +192,6 @@ const App = () => {
         desc: 'החליקי לראות את השינוי'
       }));
     } catch (error) {
-      console.error('Error loading gallery:', error);
       return [];
     }
   });
@@ -256,7 +262,6 @@ const App = () => {
       setIsScrolled(currentScroll > 0);
     };
 
-    handleScroll();
 
     // The 'true' argument enables the capture phase, catching all scroll events
     window.addEventListener('scroll', handleScroll, true);
@@ -279,8 +284,10 @@ const App = () => {
   };
 
   return (
-    <div dir="rtl" className="min-h-[var(--app-height,100vh)] overflow-x-hidden bg-[#FDFBFE] text-[#2E2A35] font-sans selection:bg-[#9E8FB2]/30">
-
+    <div
+      dir="rtl"
+      className={`min-h-[var(--app-height,100vh)] overflow-x-hidden bg-[#FDFBFE] text-[#2E2A35] font-sans selection:bg-[#9E8FB2]/30 ${!isHydrated ? 'no-animations' : ''}`}
+    >
       {/* --- SEO Helmet --- */}
       <Helmet>
         <title>ד"ר רינת בן טובים | רפואה אסתטית מתקדמת</title>
