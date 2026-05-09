@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Helmet } from 'react-helmet-async'; // <--- Added for SEO
+import { Helmet } from 'react-helmet-async';
+import { Link } from 'react-router-dom'; // <--- Added for internal routing
 import {
   Menu, X, Calendar, Sparkles, User, ShieldCheck, Heart, Mail,
   Syringe,
   Dna,
   Eye,
   Droplets,
+  Clock,
+  ArrowLeft,
   Image as ImageIcon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -14,6 +17,7 @@ import webAcd from './imgs/webAcd.JPG';
 import ContactForm from './ContactForm';
 import BeforeAfterSection from './BeforeAfterSection';
 import galleryData from './imgs/before_after/gallery.json';
+import articlesData from './data/articles.json'; // <--- Added Article Registry
 import TestimonialsSection from './TestimonialsSection';
 import LegalModal from './LegalModal';
 import { GiLips } from "react-icons/gi";
@@ -32,6 +36,7 @@ const NAV_LINKS = [
   { name: 'טיפולים', href: '#treatments' },
   { name: 'תוצאות', href: '#results' },
   { name: 'המלצות', href: '#testimonials' },
+  { name: 'מאמרים', href: '#articles' }, // <--- Added to Nav
 ];
 
 const FaceIcon = ({ size = 24, className }) => (
@@ -171,16 +176,14 @@ const App = () => {
   const [selectedTreatment, setSelectedTreatment] = useState(null);
   const [isLegalModalOpen, setIsLegalModalOpen] = useState(false);
   const [legalModalSection, setLegalModalSection] = useState('');
-  const [isHydrated, setIsHydrated] = useState(false); // <--- New state
+  const [isHydrated, setIsHydrated] = useState(false);
 
-  // Set hydrated to true once the component mounts in the browser
   useEffect(() => {
     setIsHydrated(true);
   }, []);
 
   // --- Load Gallery Data (Synchronous for SEO) ---
   const [comparisonImages] = useState(() => {
-    // ... (keep the same logic you have here)
     try {
       const featuredItems = galleryData.filter(item => item.featured === true && !item.hidden);
       return featuredItems.map(item => ({
@@ -201,7 +204,6 @@ const App = () => {
     if (navigator.userAgent.includes("HeadlessChrome")) return;
 
     const SCRIPT_ID = 'enable-accessibility-script';
-
     if (document.getElementById(SCRIPT_ID)) return;
 
     const isProduction = window.location.hostname !== 'localhost' &&
@@ -229,23 +231,18 @@ const App = () => {
     };
   }, []);
 
-  // --- Dynamic Viewport Height (Optimized) ---
+  // --- Dynamic Viewport Height ---
   useEffect(() => {
     let lastHeight = 0;
-
     const setAppHeight = () => {
       const currentHeight = window.innerHeight;
-
       if (Math.abs(currentHeight - lastHeight) > 1) {
         document.documentElement.style.setProperty('--app-height', `${currentHeight}px`);
         lastHeight = currentHeight;
       }
     };
-
     setAppHeight();
-
     window.addEventListener('resize', setAppHeight);
-
     return () => window.removeEventListener('resize', setAppHeight);
   }, []);
 
@@ -254,23 +251,19 @@ const App = () => {
     setIsLegalModalOpen(true);
   };
 
-  // --- Scroll Detection for Header Styling ---
+  // --- Scroll Detection ---
   useEffect(() => {
     const handleScroll = (e) => {
-      // Safely check window scroll, or fallback to the specific container's scroll position
       const currentScroll = window.scrollY || document.documentElement.scrollTop || (e && e.target && e.target.scrollTop) || 0;
       setIsScrolled(currentScroll > 0);
     };
-
-
-    // The 'true' argument enables the capture phase, catching all scroll events
+    handleScroll();
     window.addEventListener('scroll', handleScroll, true);
     return () => window.removeEventListener('scroll', handleScroll, true);
   }, []);
 
   const handleScrollTo = (e, href) => {
     e.preventDefault();
-
     if (isMenuOpen) {
       setIsMenuOpen(false);
       setTimeout(() => {
@@ -288,7 +281,6 @@ const App = () => {
       dir="rtl"
       className={`min-h-[var(--app-height,100vh)] overflow-x-hidden bg-[#FDFBFE] text-[#2E2A35] font-sans selection:bg-[#9E8FB2]/30 ${!isHydrated ? 'no-animations' : ''}`}
     >
-      {/* --- SEO Helmet --- */}
       <Helmet>
         <title>ד"ר רינת בן טובים | רפואה אסתטית מתקדמת</title>
         <meta name="description" content="מרפאה לרפואה אסתטית מתקדמת בניהולה של ד״ר רינת בן טובים. פיסול פנים, עיצוב שפתיים, בוטוקס ושיפור מרקם העור בשיטות טבעיות ובטוחות." />
@@ -309,14 +301,12 @@ const App = () => {
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-20">
-            {/* Logo */}
             <div className="flex-shrink-0 flex items-center cursor-pointer" onClick={(e) => handleScrollTo(e, '#hero')}>
               <span className="font-serif text-2xl md:text-3xl font-bold text-[#2E2A35] tracking-tight">
                 Dr. Rinat <span className="text-[#9E8FB2] font-light italic">Aesthetics</span>
               </span>
             </div>
 
-            {/* Desktop Navigation */}
             <nav className="hidden md:flex space-x-8 space-x-reverse items-center">
               {NAV_LINKS.map((link) => (
                 <a
@@ -336,7 +326,6 @@ const App = () => {
               </button>
             </nav>
 
-            {/* Mobile Menu Button */}
             <div className="md:hidden">
               <button
                 type="button"
@@ -350,7 +339,6 @@ const App = () => {
           </div>
         </div>
 
-        {/* Mobile Menu Dropdown */}
         <AnimatePresence>
           {isMenuOpen && (
             <motion.div
@@ -400,8 +388,6 @@ const App = () => {
       {/* --- HERO SECTION --- */}
       <section id="hero" className="relative pt-20 overflow-hidden">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between min-h-[auto] md:min-h-[85vh]">
-
-          {/* 1. IMAGE SIDE */}
           <div className="relative w-full h-[70vh] md:h-[85vh] md:w-[45%] order-1">
             <div className="w-full h-full bg-gray-200 absolute inset-0 animate-pulse" />
             <img
@@ -412,7 +398,6 @@ const App = () => {
             <div className="absolute inset-0 bg-gradient-to-t from-[#FDFBFE] via-transparent to-transparent md:hidden opacity-90 z-20"></div>
           </div>
 
-          {/* 2. TEXT SIDE */}
           <div className="relative z-10 flex flex-col justify-center px-6 py-12 md:py-0 md:px-20 bg-[#FDFBFE] md:w-[55%] order-2 text-center md:text-right">
             <motion.div
               initial={{ opacity: 0, y: 30 }}
@@ -501,7 +486,6 @@ const App = () => {
             ))}
           </div>
 
-          {/* --- Treatment Modal --- */}
           <AnimatePresence>
             {selectedTreatment && (
               <motion.div
@@ -555,7 +539,6 @@ const App = () => {
       {/* --- About Section --- */}
       <section id="about" className="py-28 bg-[#2E2A35] text-white relative overflow-hidden scroll-mt-20">
         <div className="absolute top-0 left-0 w-64 h-64 bg-[#9E8FB2] opacity-5 rounded-full -translate-x-1/2 -translate-y-1/2 blur-3xl"></div>
-
         <div className="max-w-7xl mx-auto px-4 grid lg:grid-cols-2 gap-20 items-center">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
@@ -580,16 +563,78 @@ const App = () => {
           >
             <h2 className="font-serif text-4xl md:text-6xl font-bold mb-10 leading-tight">ד״ר רינת - מצוינות <br /><span className="text-[#9E8FB2]">ברפואה אסתטית</span></h2>
             <div className="space-y-6 text-xl text-gray-300 leading-relaxed font-light">
-              <p>
-                עם ניסיון רב בתחום הרפואה והאסתטיקה, ד״ר רינת מובילה קו טיפולי המבוסס על דיוק רפואי, בטיחות מקסימלית ותוצאות טבעיות המדגישות את היופי הקיים.
-              </p>
-              <p>
-                המרפאה שלנו חורטת על דגלה שירות אישי ומקצועי, תוך שימוש בחומרים האיכותיים והמאושרים ביותר בעולם הרפואה האסתטית, כדי להבטיח את שביעות רצונך המלאה.
-              </p>
+              <p>עם ניסיון רב בתחום הרפואה והאסתטיקה, ד״ר רינת מובילה קו טיפולי המבוסס על דיוק רפואי, בטיחות מקסימלית ותוצאות טבעיות המדגישות את היופי הקיים.</p>
+              <p>המרפאה שלנו חורטת על דגלה שירות אישי ומקצועי, תוך שימוש בחומרים האיכותיים והמאושרים ביותר בעולם הרפואה האסתטית, כדי להבטיח את שביעות רצונך המלאה.</p>
             </div>
-
-
           </motion.div>
+        </div>
+      </section>
+
+      {/* --- NEW: ARTICLES EDITORIAL SECTION --- */}
+      <section id="articles" className="py-28 bg-[#FDFBFE] scroll-mt-20 overflow-hidden">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-6">
+            <div className="text-right md:text-right">
+              <h2 className="font-serif text-4xl md:text-6xl font-bold text-[#2E2A35] mb-6">עולם האסתטיקה</h2>
+              <p className="text-xl text-gray-500 max-w-2xl">מרכז הידע של ד״ר רינת: טיפים, מחקרים וכל מה שחדש בעולם היופי והרפואה.</p>
+            </div>
+            <Link 
+              to="/articles" 
+              className="hidden md:flex items-center gap-2 text-[#9E8FB2] font-bold text-lg group hover:underline underline-offset-8"
+            >
+              לכל המאמרים <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
+            </Link>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-8">
+            {articlesData.slice(0, 3).map((article, idx) => (
+              <motion.article 
+                key={article.slug}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: idx * 0.1 }}
+                className="group cursor-pointer"
+              >
+                <Link to={`/articles/${article.slug}`}>
+                  <div className="relative aspect-[16/10] rounded-[32px] overflow-hidden mb-6 shadow-sm group-hover:shadow-xl transition-all duration-500">
+                    <img 
+                      src={article.image} 
+                      alt={article.title} 
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                    />
+                    <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-md px-4 py-1.5 rounded-full text-xs font-bold text-[#9E8FB2] shadow-sm">
+                      {article.category}
+                    </div>
+                  </div>
+                  <div className="px-2">
+                    <div className="flex items-center gap-4 text-gray-400 text-xs mb-4">
+                      <span className="flex items-center gap-1.5"><Calendar size={14} /> {article.date}</span>
+                      <span className="flex items-center gap-1.5"><Clock size={14} /> {article.readTime} קריאה</span>
+                    </div>
+                    <h3 className="font-serif text-2xl font-bold text-[#2E2A35] mb-4 group-hover:text-[#9E8FB2] transition-colors leading-tight">
+                      {article.title}
+                    </h3>
+                    <p className="text-gray-500 leading-relaxed line-clamp-2 mb-6">
+                      {article.excerpt}
+                    </p>
+                    <span className="text-[#9E8FB2] font-bold text-sm flex items-center gap-1 group-hover:gap-3 transition-all">
+                      קראי את המאמר <ArrowLeft size={16} />
+                    </span>
+                  </div>
+                </Link>
+              </motion.article>
+            ))}
+          </div>
+
+          <div className="mt-12 md:hidden">
+            <Link 
+              to="/articles" 
+              className="w-full flex justify-center items-center gap-2 bg-[#F3F0F7] text-[#9E8FB2] py-4 rounded-2xl font-bold"
+            >
+              לכל המאמרים <ArrowLeft size={20} />
+            </Link>
+          </div>
         </div>
       </section>
 
@@ -614,7 +659,6 @@ const App = () => {
             ))}
           </div>
 
-          {/* Social Media Icons */}
           <div className="flex justify-center gap-6 mb-10">
             {SOCIAL_LINKS.map((social) => (
               <a

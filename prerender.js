@@ -7,45 +7,43 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 (async () => {
-  console.log('🚀 Starting Vite preview server for pre-rendering...');
-  // Spin up Vite's local server programmatically
+  console.log('🚀 Starting Vite preview server...');
   const server = await preview({ preview: { port: 4173 } });
   
-  console.log('🤖 Launching modern headless browser...');
   const browser = await puppeteer.launch({ headless: true });
   const page = await browser.newPage();
 
-  // The routes we want to bake into static HTML
-  const routes = ['/', '/gallery.html'];
+  // Load the articles list to generate routes dynamically
+  const articles = JSON.parse(fs.readFileSync(path.join(__dirname, 'src/data/articles.json'), 'utf-8'));
+  
+  const routes = [
+    '/', 
+    '/gallery.html', 
+    '/articles',
+    ...articles.map(a => `/articles/${a.slug}`)
+  ];
   
   for (const route of routes) {
     console.log(`⏳ Pre-rendering ${route}...`);
-    
-    // Go to the route and wait for the React app to fully load
     await page.goto(`http://localhost:4173${route}`, { waitUntil: 'networkidle0' });
-    
-    // Give it a tiny bit of extra time to ensure the DOM is completely stable
     await new Promise(resolve => setTimeout(resolve, 500)); 
     
-    // Extract the final HTML
     let html = await page.content();
-    
-    // --- THE DATA TRANSFORMATION STEP ---
-    // Strip the local Vite server URL to ensure relative paths for production
     html = html.replace(/http:\/\/localhost:4173/g, '');
     
-    // Determine file path
-    const fileName = route === '/' ? 'index.html' : route;
+    // Determine file path and ensure directories exist
+    const fileName = route === '/' ? 'index.html' : route.endsWith('.html') ? route : `${route}.html`;
     const filePath = path.join(__dirname, 'dist', fileName);
+    const dir = path.dirname(filePath);
     
-    // Overwrite the empty Vite shell with the fully rendered DOM
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    
     fs.writeFileSync(filePath, html);
-    console.log(`✅ Saved fully rendered HTML to ${fileName}`);
+    console.log(`✅ Saved: ${fileName}`);
   }
 
-  // Teardown
   await browser.close();
   server.httpServer.close();
-  console.log('🎉 Pre-rendering pipeline complete!');
+  console.log('🎉 Articles Pre-rendering complete!');
   process.exit(0);
 })();
