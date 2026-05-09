@@ -28,7 +28,11 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
     await new Promise(resolve => setTimeout(resolve, 500)); 
     
     // Extract the final HTML
-    const html = await page.content();
+    let html = await page.content();
+    
+    // --- THE DATA TRANSFORMATION STEP ---
+    // Strip the local Vite server URL to ensure relative paths for production
+    html = html.replace(/http:\/\/localhost:4173/g, '');
     
     // Determine file path
     const fileName = route === '/' ? 'index.html' : route;
