@@ -1,17 +1,30 @@
 import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import { BrowserRouter, Routes, Route } from "react-router-dom" // <--- הוספנו את זה
+import { createRoot, hydrateRoot } from 'react-dom/client'
+import { BrowserRouter, Routes, Route } from "react-router-dom"
+import { HelmetProvider } from 'react-helmet-async'
 import App from './App.jsx'
-import GalleryPage from './GalleryPage.jsx' // ודא שיש לך את הקובץ הזה
+import GalleryPage from './GalleryPage.jsx' 
 import './index.css'
 
-createRoot(document.getElementById('root')).render(
+const rootElement = document.getElementById('root');
+
+const app = (
   <StrictMode>
-    <BrowserRouter> {/* <--- חובה לעטוף את הכל בזה */}
-      <Routes>
-        <Route path="/" element={<App />} />
-        <Route path="/gallery.html" element={<GalleryPage />} />
-      </Routes>
-    </BrowserRouter>
-  </StrictMode>,
-)
+    <HelmetProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<App />} />
+          <Route path="/gallery.html" element={<GalleryPage />} />
+        </Routes>
+      </BrowserRouter>
+    </HelmetProvider>
+  </StrictMode>
+);
+
+// If react-snap has injected HTML, we hydrate to attach event listeners.
+// Otherwise, we render normally for standard development mode.
+if (rootElement.hasChildNodes()) {
+  hydrateRoot(rootElement, app);
+} else {
+  createRoot(rootElement).render(app);
+}

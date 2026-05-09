@@ -10,7 +10,7 @@ const ContactForm = () => {
     const data = new FormData(event.target);
 
     try {
-      const response = await fetch("https://formsubmit.co/YOUR_TOKEN_HERE", {
+      const response = await fetch("https://formsubmit.co/0918d13167e773f02709eae9518f5eab", {
         method: "POST",
         body: data,
         headers: {
