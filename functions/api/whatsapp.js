@@ -210,9 +210,13 @@ export async function onRequest({ request, env }) {
           if ((!session.humanMode || justActivatedHuman) && nextStepId && BOT_FLOW[nextStepId]) {
             const step = BOT_FLOW[nextStepId];
             let buttons = [...(step.buttons || [])];
-            if (nextStepId !== "start" && buttons.length < 3) {
+            
+            // ✅ THE FIX: Only push "start" if it doesn't already exist in the JSON
+            const hasStartButton = buttons.some(b => b.id === "start");
+            if (nextStepId !== "start" && buttons.length < 3 && !hasStartButton) {
               buttons.push({ id: "start", title: "חזרה לתפריט 🏠" });
             }
+            
             await sendWhatsApp(from, {
               type: "interactive",
               interactive: {
@@ -222,6 +226,7 @@ export async function onRequest({ request, env }) {
                 action: { buttons: buttons.slice(0, 3).map(b => ({ type: "reply", reply: b })) }
               }
             }, env);
+            
             if (session.isFirstTime) {
               session.isFirstTime = false;
               await env.SESSIONS_KV.put(from, JSON.stringify(session));
