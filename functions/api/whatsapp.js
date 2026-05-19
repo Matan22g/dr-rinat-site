@@ -196,20 +196,22 @@ export async function onRequest({ request, env }) {
             BOT_FLOW = kvConfig || DEFAULT_FLOW;
           } catch (e) { BOT_FLOW = DEFAULT_FLOW; }
 
+          let justActivatedHuman = false;
+
           if (buttonId === "human") {
             session.humanMode = true;
+            justActivatedHuman = true;
             await env.SESSIONS_KV.put(from, JSON.stringify(session));
             await sendTelegram("editForumTopic", { message_thread_id: session.threadId, name: `🔴 ${currentName} (${from.slice(-4)})` }, env);
-            await sendWhatsApp(from, { text: { body: "ההודעה הועברה לרינת, היא תחזור אלייך בהקדם! ❤️" } }, env);
           } else if (buttonId === "main_booking") {
             await sendTelegram("editForumTopic", { message_thread_id: session.threadId, name: `🔴 ${currentName} (${from.slice(-4)})` }, env);
           }
 
-          if (!session.humanMode && nextStepId && BOT_FLOW[nextStepId]) {
+          if ((!session.humanMode || justActivatedHuman) && nextStepId && BOT_FLOW[nextStepId]) {
             const step = BOT_FLOW[nextStepId];
             let buttons = [...(step.buttons || [])];
             if (nextStepId !== "start" && buttons.length < 3) {
-              buttons.push({ id: "start", title: "חזרה לתפריט ✨" });
+              buttons.push({ id: "start", title: "חזרה לתפריט 🏠" });
             }
             await sendWhatsApp(from, {
               type: "interactive",
