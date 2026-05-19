@@ -213,7 +213,6 @@ export async function onRequest({ request, env, waitUntil }) {
               env.SESSIONS_KV.put(from, JSON.stringify(session)),
               sendTelegram("editForumTopic", { message_thread_id: session.threadId, name: `🔴 ${currentName} (${from.slice(-4)})` }, env)
             );
-            await sendWhatsApp(from, { text: { body: "ההודעה הועברה לרינת, היא תחזור אלייך בהקדם! ❤️" } }, env);
           } else if (buttonId === "main_booking") {
             backgroundTasks.push(sendTelegram("editForumTopic", { message_thread_id: session.threadId, name: `🔴 ${currentName} (${from.slice(-4)})` }, env));
           }
