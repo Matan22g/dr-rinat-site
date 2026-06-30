@@ -185,9 +185,10 @@ export async function onRequest({ request, env, waitUntil }) {
           // --- זיהוי הגעה מקמפיין ממומן (Click-to-WhatsApp) ---
           let adInfo = "";
           if (msg.referral) {
-            const adHeadline = msg.referral.headline ? `\nכותרת המודעה: ${msg.referral.headline}` : "";
+            const adHeadline = msg.referral.headline ? `\n🏷️ כותרת: ${msg.referral.headline}` : "";
             const adSource = msg.referral.source_type ? ` (מקור: ${msg.referral.source_type})` : "";
-            adInfo = `\n\n📢 הגיעה מקמפיין ממומן!${adSource}${adHeadline}`;
+            const adId = msg.referral.source_id ? `\n🆔 מזהה: ${msg.referral.source_id}` : "";
+            adInfo = `\n\n📢 הגיעה מקמפיין ממומן!${adSource}${adHeadline}${adId}`;
           }
 
           const backgroundTasks = [];
@@ -222,7 +223,6 @@ export async function onRequest({ request, env, waitUntil }) {
               env.SESSIONS_KV.put(from, JSON.stringify(session)),
               sendTelegram("editForumTopic", { message_thread_id: session.threadId, name: `🔴 ${currentName} (${from.slice(-4)})` }, env)
             );
-            // הטקסט הכפול הוסר מכאן
           } else if (buttonId === "main_booking") {
             backgroundTasks.push(sendTelegram("editForumTopic", { message_thread_id: session.threadId, name: `🔴 ${currentName} (${from.slice(-4)})` }, env));
           }
