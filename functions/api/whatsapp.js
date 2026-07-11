@@ -6,6 +6,9 @@ const DEFAULT_FLOW = {
   }
 };
 
+// --- הגדרת Cache גלובלי בזיכרון ה-Worker (לשיפור ביצועים) ---
+let cachedBotFlow = null;
+
 // --- Helper Functions ---
 
 async function forwardAudioToTelegram(mediaId, threadId, caption, disableNotification, env) {
@@ -94,7 +97,7 @@ async function sendTelegram(method, payload, env) {
 
 // --- Main Engine ---
 
-export async function onRequest({ request, env }) {
+export async function onRequest({ request, env, waitUntil }) {
   if (request.method === "GET") {
     const { searchParams } = new URL(request.url);
     if (searchParams.get("hub.verify_token") === env.VERIFY_TOKEN) {
@@ -116,11 +119,12 @@ export async function onRequest({ request, env }) {
           const recipientId = statusObj.recipient_id;
           let session = await env.SESSIONS_KV.get(recipientId, { type: "json" });
           if (session?.threadId) {
-            await sendTelegram("sendMessage", {
+            const task = sendTelegram("sendMessage", {
               message_thread_id: session.threadId,
               text: "🔵 המטופלת קראה את ההודעה",
               disable_notification: true
             }, env);
+            if (waitUntil) waitUntil(task); else await task;
           }
         }
         return new Response("OK", { status: 200 });
@@ -130,7 +134,8 @@ export async function onRequest({ request, env }) {
       if (body.message?.forum_topic_edited) {
         const tid = body.message.message_thread_id;
         const newName = body.message.forum_topic_edited.name.replace(/[✅🔴🆕]\s*/g, '').split(' (')[0].trim();
-        await env.SESSIONS_KV.put(`name_${tid}`, newName);
+        const task = env.SESSIONS_KV.put(`name_${tid}`, newName);
+        if (waitUntil) waitUntil(task); else await task;
         return new Response("OK", { status: 200 });
       }
 
@@ -145,8 +150,11 @@ export async function onRequest({ request, env }) {
           if (topicRes?.ok) {
             session.threadId = topicRes.result.message_thread_id;
             session.isFirstTime = true;
-            await env.SESSIONS_KV.put(from, JSON.stringify(session));
-            await env.SESSIONS_KV.put(`name_${session.threadId}`, rawName);
+            const tasks = Promise.all([
+              env.SESSIONS_KV.put(from, JSON.stringify(session)),
+              env.SESSIONS_KV.put(`name_${session.threadId}`, rawName)
+            ]);
+            if (waitUntil) waitUntil(tasks); else await tasks;
             return true;
           }
           return false;
@@ -166,51 +174,68 @@ export async function onRequest({ request, env }) {
 
           if (requestedStart) {
             session.humanMode = false;
-            await env.SESSIONS_KV.put(from, JSON.stringify(session));
+            const task = env.SESSIONS_KV.put(from, JSON.stringify(session));
+            if (waitUntil) waitUntil(task); else await task;
           }
 
-          const currentName = (await env.SESSIONS_KV.get(`name_${session.threadId}`)) || session.name || rawName;
-
+          const currentName = session.name || rawName;
           const isUrgent = customerText.includes("דחוף");
           const disableNotification = !(buttonId === "human" || buttonId === "main_booking" || isUrgent || session.humanMode);
 
-          // שליחה לטלגרם
-          if (isAudio) {
-            const audioId = msg.audio?.id || msg.voice?.id;
-            await forwardAudioToTelegram(audioId, session.threadId, `👤 הקלטה מאת: ${currentName}`, disableNotification, env);
-          } else if (isImage) {
-            await forwardImageToTelegram(msg.image.id, session.threadId, `👤 מאת: ${currentName}\n🖼️ תמונה\n\nPhone: ${from}`, disableNotification, env);
-          } else {
-            // שולח טקסט רק אם זה לא אודיו או תמונה
-            await sendTelegram("sendMessage", {
-              message_thread_id: session.threadId,
-              text: `👤 מאת: ${currentName}\n💬 הודעה: ${customerText}\n\nPhone: ${from}`,
-              disable_notification: disableNotification
-            }, env);
+          // --- זיהוי הגעה מקמפיין ממומן (Click-to-WhatsApp) ---
+          let adInfo = "";
+          if (msg.referral) {
+            const adHeadline = msg.referral.headline ? `\n🏷️ כותרת: ${msg.referral.headline}` : "";
+            const adSource = msg.referral.source_type ? ` (מקור: ${msg.referral.source_type})` : "";
+            const adId = msg.referral.source_id ? `\n🆔 מזהה: ${msg.referral.source_id}` : "";
+            adInfo = `\n\n📢 הגיעה מקמפיין ממומן!${adSource}${adHeadline}${adId}`;
           }
 
-          // תגובה אוטומטית (Decision Tree)
+          const backgroundTasks = [];
+
+          if (isAudio) {
+            backgroundTasks.push(forwardAudioToTelegram(msg.audio?.id || msg.voice?.id, session.threadId, `👤 הקלטה מאת: ${currentName}${adInfo}`, disableNotification, env));
+          } else if (isImage) {
+            backgroundTasks.push(forwardImageToTelegram(msg.image.id, session.threadId, `👤 מאת: ${currentName}\n🖼️ תמונה\n\nPhone: ${from}${adInfo}`, disableNotification, env));
+          } else {
+            backgroundTasks.push(sendTelegram("sendMessage", {
+              message_thread_id: session.threadId,
+              text: `👤 מאת: ${currentName}\n💬 הודעה: ${customerText}\n\nPhone: ${from}${adInfo}`,
+              disable_notification: disableNotification
+            }, env));
+          }
+
           let BOT_FLOW;
-          try {
-            const kvConfig = await env.SESSIONS_KV.get("BOT_CONFIG", { type: "json" });
-            BOT_FLOW = kvConfig || DEFAULT_FLOW;
-          } catch (e) { BOT_FLOW = DEFAULT_FLOW; }
+          if (!cachedBotFlow) {
+            try {
+              const kvConfig = await env.SESSIONS_KV.get("BOT_CONFIG", { type: "json" });
+              cachedBotFlow = kvConfig || DEFAULT_FLOW;
+            } catch (e) { cachedBotFlow = DEFAULT_FLOW; }
+          }
+          BOT_FLOW = cachedBotFlow;
+
+          let justActivatedHuman = false;
 
           if (buttonId === "human") {
             session.humanMode = true;
-            await env.SESSIONS_KV.put(from, JSON.stringify(session));
-            await sendTelegram("editForumTopic", { message_thread_id: session.threadId, name: `🔴 ${currentName} (${from.slice(-4)})` }, env);
-            await sendWhatsApp(from, { text: { body: "ההודעה הועברה לרינת, היא תחזור אלייך בהקדם! ❤️" } }, env);
+            justActivatedHuman = true;
+            backgroundTasks.push(
+              env.SESSIONS_KV.put(from, JSON.stringify(session)),
+              sendTelegram("editForumTopic", { message_thread_id: session.threadId, name: `🔴 ${currentName} (${from.slice(-4)})` }, env)
+            );
           } else if (buttonId === "main_booking") {
-            await sendTelegram("editForumTopic", { message_thread_id: session.threadId, name: `🔴 ${currentName} (${from.slice(-4)})` }, env);
+            backgroundTasks.push(sendTelegram("editForumTopic", { message_thread_id: session.threadId, name: `🔴 ${currentName} (${from.slice(-4)})` }, env));
           }
 
-          if (!session.humanMode && nextStepId && BOT_FLOW[nextStepId]) {
+          if ((!session.humanMode || justActivatedHuman) && nextStepId && BOT_FLOW[nextStepId]) {
             const step = BOT_FLOW[nextStepId];
             let buttons = [...(step.buttons || [])];
-            if (nextStepId !== "start" && buttons.length < 3) {
-              buttons.push({ id: "start", title: "חזרה לתפריט ✨" });
+            
+            const hasStartButton = buttons.some(b => b.id === "start");
+            if (nextStepId !== "start" && buttons.length < 3 && !hasStartButton) {
+              buttons.push({ id: "start", title: "חזרה לתפריט 🏠" });
             }
+            
             await sendWhatsApp(from, {
               type: "interactive",
               interactive: {
@@ -220,10 +245,17 @@ export async function onRequest({ request, env }) {
                 action: { buttons: buttons.slice(0, 3).map(b => ({ type: "reply", reply: b })) }
               }
             }, env);
+            
             if (session.isFirstTime) {
               session.isFirstTime = false;
-              await env.SESSIONS_KV.put(from, JSON.stringify(session));
+              backgroundTasks.push(env.SESSIONS_KV.put(from, JSON.stringify(session)));
             }
+          }
+
+          if (waitUntil) {
+            waitUntil(Promise.all(backgroundTasks));
+          } else {
+            await Promise.all(backgroundTasks);
           }
         }
       }
@@ -242,22 +274,15 @@ export async function onRequest({ request, env }) {
 
           try {
             if (textContent === "/1") {
-              waRes = await sendWhatsApp(customerPhone, {
-                type: "template", template: { name: "ping_think", language: { code: "he" } }
-              }, env);
+              waRes = await sendWhatsApp(customerPhone, { type: "template", template: { name: "ping_think", language: { code: "he" } } }, env);
             }
             else if (textContent === "/2") {
-              waRes = await sendWhatsApp(customerPhone, {
-                type: "template", template: { name: "ping_still_relevant", language: { code: "he" } }
-              }, env);
+              waRes = await sendWhatsApp(customerPhone, { type: "template", template: { name: "ping_still_relevant", language: { code: "he" } } }, env);
             }
             else if (textContent === "/3") {
-              waRes = await sendWhatsApp(customerPhone, {
-                type: "template", template: { name: "ping_not_returned", language: { code: "he" } }
-              }, env);
+              waRes = await sendWhatsApp(customerPhone, { type: "template", template: { name: "ping_not_returned", language: { code: "he" } } }, env);
             }
             else if (textContent.startsWith("/4 ")) {
-              // חילוץ השעה מהפקודה (למשל "/4 10:30")
               const timeString = textContent.replace("/4 ", "").trim();
               waRes = await sendWhatsApp(customerPhone, {
                 type: "template",
@@ -277,26 +302,27 @@ export async function onRequest({ request, env }) {
             }
 
             if (waRes?.messages) {
-              await sendTelegram("sendMessage", {
-                message_thread_id: threadId,
-                text: "✅ ההודעה נמסרה למטופלת",
-                disable_notification: true
-              }, env);
-
               let session = await env.SESSIONS_KV.get(customerPhone, { type: "json" }) || {};
               session.humanMode = true;
-              await env.SESSIONS_KV.put(customerPhone, JSON.stringify(session));
-              const currentName = (await env.SESSIONS_KV.get(`name_${threadId}`)) || "לקוחה";
-              await sendTelegram("editForumTopic", { message_thread_id: threadId, name: `✅ ${currentName} (${customerPhone.slice(-4)})` }, env);
+              const currentName = session.name || "לקוחה";
+              
+              const tasks = Promise.all([
+                sendTelegram("sendMessage", { message_thread_id: threadId, text: "✅ ההודעה נמסרה למטופלת", disable_notification: true }, env),
+                env.SESSIONS_KV.put(customerPhone, JSON.stringify(session)),
+                sendTelegram("editForumTopic", { message_thread_id: threadId, name: `✅ ${currentName} (${customerPhone.slice(-4)})` }, env)
+              ]);
+              if (waitUntil) waitUntil(tasks); else await tasks;
             } else {
-              await sendTelegram("sendMessage", {
+              const task = sendTelegram("sendMessage", {
                 message_thread_id: threadId,
                 text: `❌ שגיאה בשליחה: ${waRes?.error?.message || "בעיה לא ידועה"}`,
                 disable_notification: false
               }, env);
+              if (waitUntil) waitUntil(task); else await task;
             }
           } catch (err) {
-            await sendTelegram("sendMessage", { message_thread_id: threadId, text: `❌ תקלה טכנית: ${err.message}`, disable_notification: false }, env);
+            const task = sendTelegram("sendMessage", { message_thread_id: threadId, text: `❌ תקלה טכנית: ${err.message}`, disable_notification: false }, env);
+            if (waitUntil) waitUntil(task); else await task;
           }
         }
       }

@@ -7,24 +7,42 @@ const ContactForm = () => {
   const handleSubmit = async (event) => {
     event.preventDefault();
     setStatus('sending');
-    const data = new FormData(event.target);
+    
+    // 1. Grab the form data
+    const formData = new FormData(event.target);
+    
+    // 2. Append your Web3Forms Access Key
+    formData.append("access_key", "c142493b-061a-4dec-900e-026d45e9cbcc");
+    
+    // Optional: Set a custom email subject
+    formData.append("subject", "New Lead from Website!");
+    formData.append("from_name", "Website Contact Form");
+
+    // 3. Convert FormData to JSON
+    const object = Object.fromEntries(formData);
+    const json = JSON.stringify(object);
 
     try {
-      const response = await fetch("https://formsubmit.co/0918d13167e773f02709eae9518f5eab", {
+      const response = await fetch("https://api.web3forms.com/submit", {
         method: "POST",
-        body: data,
         headers: {
-          'Accept': 'application/json'
-        }
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
+        body: json
       });
 
-      if (response.ok) {
+      const result = await response.json();
+
+      if (result.success) {
         setStatus('success');
         event.target.reset();
       } else {
+        console.error("Web3Forms Error:", result);
         setStatus('error');
       }
-    } catch {
+    } catch (error) {
+      console.error("Fetch Error:", error);
       setStatus('error');
     }
   };
@@ -55,13 +73,8 @@ const ContactForm = () => {
               >
                 <h2 className="font-serif text-4xl md:text-5xl font-bold text-[#2E2A35] mb-4">צרו קשר</h2>
                 <div className="w-20 h-1 bg-[#9E8FB2] mx-auto rounded-full mb-8"></div>
+                
                 <form onSubmit={handleSubmit} className="space-y-6">
-                  {/* --- Hidden Fields for FormSubmit --- */}
-                  <input type="hidden" name="_captcha" value="false" />
-                  <input type="hidden" name="_subject" value="New Lead from Website!" />
-                  <input type="hidden" name="_template" value="table" />
-                  <input type="text" name="_honey" style={{ display: 'none' }} />
-
                   {/* --- Visual Fields --- */}
                   <div>
                     <label className="sr-only">שם מלא</label>
@@ -107,6 +120,7 @@ const ContactForm = () => {
                     {status === 'sending' ? 'שולח...' : 'שליחת פרטים'}
                   </button>
                 </form>
+                
               </motion.div>
             )}
           </AnimatePresence>
