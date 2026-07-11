@@ -16,5 +16,14 @@
     "image": "/imgs/articles/botox.jpeg",
     "category": "בוטוקס",
     "readTime": "3 דק׳"
+  },
+  {
+    "slug": "salmon-dna-treatment-guide",
+    "title": "טיפול סלמון (פולינוקלאוטידים): הדור הבא של חידוש העור",
+    "date": "2026-05-05",
+    "excerpt": "לא מדובר בעוד חומר מילוי, אלא בשיקום העור ברמה התאית. כל מה שצריך לדעת על הטיפול הביולוגי שכבש את עולם האסתטיקה ומחולל פלאים באזור העיניים.",
+    "image": "/imgs/articles/salmon.jpeg",
+    "category": "חידוש העור",
+    "readTime": "5 דק׳"
   }
 ]

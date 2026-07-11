@@ -571,22 +571,21 @@ const App = () => {
       </section>
 
       {/* --- NEW: ARTICLES EDITORIAL SECTION --- */}
+{/* --- NEW: ARTICLES EDITORIAL SECTION --- */}
       <section id="articles" className="py-28 bg-[#FDFBFE] scroll-mt-20 overflow-hidden">
         <div className="max-w-7xl mx-auto px-4">
-          <div className="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-6">
-            <div className="text-right md:text-right">
-              <h2 className="font-serif text-4xl md:text-6xl font-bold text-[#2E2A35] mb-6">עולם האסתטיקה</h2>
-              <p className="text-xl text-gray-500 max-w-2xl">מרכז הידע של ד״ר רינת: טיפים, מחקרים וכל מה שחדש בעולם היופי והרפואה.</p>
-            </div>
-            <Link 
-              to="/articles" 
-              className="hidden md:flex items-center gap-2 text-[#9E8FB2] font-bold text-lg group hover:underline underline-offset-8"
-            >
-              לכל המאמרים <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
-            </Link>
+          
+          {/* 1. STANDARDIZED CENTERED HEADER */}
+          <div className="text-center mb-16 px-4">
+            <h2 className="font-serif text-4xl md:text-5xl font-bold text-[#2E2A35] mb-4">עולם האסתטיקה</h2>
+            <div className="w-20 h-1 bg-[#9E8FB2] mx-auto rounded-full mb-6"></div>
+            <p className="text-gray-500 text-lg max-w-2xl mx-auto">
+              מרכז הידע של ד״ר רינת: טיפים, מחקרים וכל מה שחדש בעולם היופי והרפואה.
+            </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8">
+          {/* 2. THE SWIMLANE GRID */}
+          <div className="flex md:grid md:grid-cols-3 overflow-x-auto md:overflow-visible snap-x snap-mandatory gap-6 md:gap-8 pb-12 md:pb-0 -mx-4 px-4 md:mx-0 md:px-0 [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: 'none' }}>
             {articlesData.slice(0, 3).map((article, idx) => (
               <motion.article 
                 key={article.slug}
@@ -594,50 +593,56 @@ const App = () => {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: idx * 0.1 }}
-                className="group cursor-pointer"
+                className="snap-center shrink-0 w-[85vw] md:w-auto group cursor-pointer"
               >
-                <Link to={`/articles/${article.slug}`}>
-                  <div className="relative aspect-[16/10] rounded-[32px] overflow-hidden mb-6 shadow-sm group-hover:shadow-xl transition-all duration-500">
+                <Link to={`/articles/${article.slug}`} className="block h-full">
+                  <div className="relative aspect-[16/10] md:aspect-[4/5] rounded-[32px] md:rounded-[48px] overflow-hidden mb-6 md:mb-8 shadow-sm group-hover:shadow-2xl transition-all duration-700">
                     <img 
                       src={article.image} 
                       alt={article.title} 
-                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                      className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"
                     />
-                    <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-md px-4 py-1.5 rounded-full text-xs font-bold text-[#9E8FB2] shadow-sm">
+                    <div className="absolute top-4 right-4 md:top-6 md:right-6 bg-white/90 backdrop-blur-md px-4 py-1.5 md:px-5 md:py-2 rounded-full text-[10px] font-black text-[#9E8FB2] shadow-sm uppercase tracking-widest">
                       {article.category}
                     </div>
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#2E2A35]/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 hidden md:block" />
                   </div>
-                  <div className="px-2">
-                    <div className="flex items-center gap-4 text-gray-400 text-xs mb-4">
-                      <span className="flex items-center gap-1.5"><Calendar size={14} /> {article.date}</span>
-                      <span className="flex items-center gap-1.5"><Clock size={14} /> {article.readTime} קריאה</span>
+
+                  <div className="px-2 md:px-4">
+                    <div className="flex items-center gap-4 text-gray-400 text-[11px] mb-4 font-bold tracking-tighter">
+                      <span className="flex items-center gap-1.5"><Calendar size={12} /> {article.date}</span>
+                      <span className="flex items-center gap-1.5"><Clock size={12} /> {article.readTime} קריאה</span>
                     </div>
-                    <h3 className="font-serif text-2xl font-bold text-[#2E2A35] mb-4 group-hover:text-[#9E8FB2] transition-colors leading-tight">
+                    
+                    <h3 className="font-serif text-2xl md:text-3xl font-bold text-[#2E2A35] mb-4 md:mb-5 group-hover:text-[#9E8FB2] transition-colors leading-tight">
                       {article.title}
                     </h3>
-                    <p className="text-gray-500 leading-relaxed line-clamp-2 mb-6">
+                    
+                    <p className="text-gray-500 text-base leading-relaxed line-clamp-2 md:mb-8 mb-6 font-light">
                       {article.excerpt}
                     </p>
-                    <span className="text-[#9E8FB2] font-bold text-sm flex items-center gap-1 group-hover:gap-3 transition-all">
-                      קראי את המאמר <ArrowLeft size={16} />
-                    </span>
+                    
+                    <div className="inline-flex items-center gap-2 text-[#2E2A35] font-black text-xs uppercase tracking-widest md:border-b-2 md:border-[#9E8FB2] pb-1 group-hover:gap-4 transition-all">
+                      קראי עוד <ArrowLeft size={14} />
+                    </div>
                   </div>
                 </Link>
               </motion.article>
             ))}
           </div>
 
-          <div className="mt-12 md:hidden">
+          {/* 3. STANDARDIZED BOTTOM CTA BUTTON */}
+          <div className="text-center mt-12 md:mt-16">
             <Link 
               to="/articles" 
-              className="w-full flex justify-center items-center gap-2 bg-[#F3F0F7] text-[#9E8FB2] py-4 rounded-2xl font-bold"
+              className="inline-flex items-center gap-3 bg-[#F3F0F7] text-[#9E8FB2] font-bold py-4 px-10 rounded-full hover:bg-[#9E8FB2] hover:text-white transition-all active:scale-95 text-lg"
             >
-              לכל המאמרים <ArrowLeft size={20} />
+              לצפייה בכל המאמרים <ArrowLeft size={20} />
             </Link>
           </div>
+
         </div>
       </section>
-
       <ContactForm />
 
       {/* --- Footer --- */}
