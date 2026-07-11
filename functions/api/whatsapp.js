@@ -132,9 +132,26 @@ export async function onRequest({ request, env, waitUntil }) {
         }
 
         // 3. שולח את טמפלייט הנדנוד של רינת
+// 3. שולח את טמפלייט הנדנוד המותאם אישית
+        // שים לב: המשתנים מגיעים בתוך ה-body ששלחנו מה-CRM
+        const { firstName, months, treatmentName } = body;
+
         const waRes = await sendWhatsApp(cleanPhone, { 
           type: "template", 
-          template: { name: "ping_still_relevant", language: { code: "he" } } 
+          template: { 
+            name: "refresh_remind", 
+            language: { code: "he" },
+            components: [
+              {
+                type: "body",
+                parameters: [
+                  { type: "text", text: firstName || "לקוחה" },      // {{1}}
+                  { type: "text", text: months || "זמן מה" },        // {{2}}
+                  { type: "text", text: treatmentName || "טיפול" }  // {{3}}
+                ]
+              }
+            ]
+          } 
         }, env);
 
         // 4. מעדכן בטלגרם כדי שרינת תראה שהמערכת עבדה בשבילה
