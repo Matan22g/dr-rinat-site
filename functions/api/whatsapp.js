@@ -109,6 +109,68 @@ export async function onRequest({ request, env, waitUntil }) {
   if (request.method === "POST") {
     try {
       const body = await request.json();
+
+      // =======================================================
+      // 🌟 NEW: CRM NUDGE BRIDGE LISTENER 🌟
+      // מאזין לבקשות שמגיעות מה-CRM כדי לשלוח נדנוד אוטומטי
+      // =======================================================
+      if (body.crm_nudge) {
+        // 1. אימות אבטחה: מוודא שזה באמת ה-CRM שלנו
+        if (request.headers.get("Authorization") !== `Bearer ${env.CRM_WEBHOOK_SECRET}`) {
+          return new Response("Unauthorized", { status: 401 });
+        }
+
+        const { phone, clientName, treatmentNotes } = body;
+        
+        // 2. ניקוי ונירמול המספר לפורמט WhatsApp
+        let cleanPhone = phone.replace(/\D/g, ''); // מוריד מקפים, רווחים וכו'
+        if (cleanPhone.startsWith('05')) {
+          cleanPhone = '972' + cleanPhone.substring(1); // הופך 05 ל-9725
+        }
+        if (cleanPhone.startsWith('97205')) {
+          cleanPhone = cleanPhone.replace('97205', '9725'); // מקרה קצה אם הוזן +97205
+        }
+
+        // 3. שולח את טמפלייט הנדנוד של רינת
+        const waRes = await sendWhatsApp(cleanPhone, { 
+          type: "template", 
+          template: { name: "ping_still_relevant", language: { code: "he" } } 
+        }, env);
+
+        // 4. מעדכן בטלגרם כדי שרינת תראה שהמערכת עבדה בשבילה
+        if (waRes?.messages) {
+          let session = await env.SESSIONS_KV.get(cleanPhone, { type: "json" }) || { threadId: null, humanMode: false, name: clientName };
+          
+          const notifyTelegram = async () => {
+            if (!session.threadId) {
+              const topicRes = await sendTelegram("createForumTopic", { name: `🤖 ${clientName} (${cleanPhone.slice(-4)})` }, env);
+              if (topicRes?.ok) {
+                session.threadId = topicRes.result.message_thread_id;
+                
+                // שמירה כפולה ל-KV: גם הסשן וגם מיפוי השם (חיוני להמשך עבודה תקינה של הבוט)
+                await Promise.all([
+                  env.SESSIONS_KV.put(cleanPhone, JSON.stringify(session)),
+                  env.SESSIONS_KV.put(`name_${session.threadId}`, clientName)
+                ]);
+              }
+            }
+            if (session.threadId) {
+              await sendTelegram("sendMessage", {
+                message_thread_id: session.threadId,
+                text: `🤖 *[מערכת ה-CRM]*\nנשלח בהצלחה נדנוד אוטומטי ללקוחה: ${clientName}\nעבור: ${treatmentNotes}\n\nPhone: ${cleanPhone}`,
+                disable_notification: true
+              }, env);
+            }
+          };
+          
+          if (waitUntil) waitUntil(notifyTelegram()); else await notifyTelegram();
+          return Response.json({ success: true });
+        } else {
+          return Response.json({ success: false, error: waRes }, { status: 500 });
+        }
+      }
+      // =======================================================
+
       const value = body.entry?.[0]?.changes?.[0]?.value;
 
       // 1. מנגנון Read Receipts (וי כחול)
