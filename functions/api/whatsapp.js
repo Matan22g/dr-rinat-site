@@ -131,40 +131,47 @@ export async function onRequest({ request, env, waitUntil }) {
           cleanPhone = cleanPhone.replace('97205', '9725'); // מקרה קצה אם הוזן +97205
         }
 
-        // 3. שולח את טמפלייט הנדנוד של רינת
-// 3. שולח את טמפלייט הנדנוד המותאם אישית
-        // שים לב: המשתנים מגיעים בתוך ה-body ששלחנו מה-CRM
-        const { firstName, months, treatmentName } = body;
-
-// 4. שולח את טמפלייט הנדנוד המותאם אישית
-        const waRes = await sendWhatsApp(cleanPhone, { 
-          type: "template", 
-          template: { 
-            name: "refresh_remind", 
+// 3. דינמיות: בחירת הטמפלייט בהתאם למה שנשלח מה-CRM
+        const { firstName, months, treatmentName, template, params } = body;
+        
+        let templatePayload = {};
+        
+        if (template === 'appointment_reminder') {
+          // תזכורת לתור קרוב (מגיע ממסך היומן)
+          templatePayload = {
+            name: "appointment_reminder",
             language: { code: "he" },
             components: [
               {
                 type: "body",
                 parameters: [
-                  { 
-                    type: "text", 
-                    parameter_name: "customer", 
-                    text: firstName || "לקוחה" 
-                  },
-                  { 
-                    type: "text", 
-                    parameter_name: "time_frame", 
-                    text: months || "זמן מה" 
-                  },
-                  { 
-                    type: "text", 
-                    parameter_name: "session_type", 
-                    text: treatmentName || "טיפול" 
-                  }
+                  { type: "text", text: params[0] || "00:00" } // הזמן שהעברנו במערך
                 ]
               }
             ]
-          } 
+          };
+        } else {
+          // ברירת המחדל: נדנוד לטיפול חוזר (מגיע ממסך ה-CRM)
+          templatePayload = {
+            name: "refresh_remind",
+            language: { code: "he" },
+            components: [
+              {
+                type: "body",
+                parameters: [
+                  { type: "text", parameter_name: "customer", text: firstName || "לקוחה" },
+                  { type: "text", parameter_name: "time_frame", text: months || "זמן מה" },
+                  { type: "text", parameter_name: "session_type", text: treatmentName || "טיפול" }
+                ]
+              }
+            ]
+          };
+        }
+
+        // שליחת הטמפלייט הנבחר לוואטסאפ
+        const waRes = await sendWhatsApp(cleanPhone, { 
+          type: "template", 
+          template: templatePayload
         }, env);
 
         // 4. מעדכן בטלגרם כדי שרינת תראה שהמערכת עבדה בשבילה
