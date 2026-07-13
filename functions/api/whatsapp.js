@@ -136,6 +136,7 @@ export async function onRequest({ request, env, waitUntil }) {
         // שים לב: המשתנים מגיעים בתוך ה-body ששלחנו מה-CRM
         const { firstName, months, treatmentName } = body;
 
+// 4. שולח את טמפלייט הנדנוד המותאם אישית
         const waRes = await sendWhatsApp(cleanPhone, { 
           type: "template", 
           template: { 
@@ -145,9 +146,21 @@ export async function onRequest({ request, env, waitUntil }) {
               {
                 type: "body",
                 parameters: [
-                  { type: "text", text: firstName || "לקוחה" },      // {{1}}
-                  { type: "text", text: months || "זמן מה" },        // {{2}}
-                  { type: "text", text: treatmentName || "טיפול" }  // {{3}}
+                  { 
+                    type: "text", 
+                    parameter_name: "customer", 
+                    text: firstName || "לקוחה" 
+                  },
+                  { 
+                    type: "text", 
+                    parameter_name: "time_frame", 
+                    text: months || "זמן מה" 
+                  },
+                  { 
+                    type: "text", 
+                    parameter_name: "session_type", 
+                    text: treatmentName || "טיפול" 
+                  }
                 ]
               }
             ]
