@@ -112,14 +112,17 @@ export async function onRequest({ request, env, waitUntil }) {
 
       // =======================================================
       // 🌟 CRM NUDGE BRIDGE LISTENER 🌟
+      // מאזין לבקשות שמגיעות מה-CRM כדי לשלוח נדנוד או תזכורת אוטומטית
       // =======================================================
       if (body.crm_nudge) {
+        // 1. אימות אבטחה: מוודא שזה באמת ה-CRM שלנו
         if (request.headers.get("Authorization") !== `Bearer ${env.CRM_WEBHOOK_SECRET}`) {
           return new Response("Unauthorized", { status: 401 });
         }
 
         const { phone, clientName, treatmentNotes, template, params, firstName, months, treatmentName } = body;
         
+        // 2. ניקוי ונירמול המספר לפורמט WhatsApp
         let cleanPhone = phone.replace(/\D/g, ''); 
         if (cleanPhone.startsWith('05')) {
           cleanPhone = '972' + cleanPhone.substring(1); 
@@ -128,35 +131,35 @@ export async function onRequest({ request, env, waitUntil }) {
           cleanPhone = cleanPhone.replace('97205', '9725'); 
         }
 
-        let messageTemplateName = "refresh_remind";
+        // 3. ניתוב תבניות (תזכורת תור מול נדנוד CRM)
+        let messageTemplateName = template || "refresh_remind";
         let messageComponents = [];
 
-        if (template === "appointment_reminder") {
-          // תזכורת תור למחר
-          messageTemplateName = "appointment_reminder";
+        if (messageTemplateName === "appointment_reminder") {
+          // תזכורת תור למחר - דורש רק פרמטר אחד (שעה)
           messageComponents = [
             {
               type: "body",
               parameters: [
-                { type: "text", text: String(params?.[0] || "00:00") }
+                { type: "text", text: params?.[0] || "00:00" }
               ]
             }
           ];
         } else {
-          // נדנוד CRM (דורס כל שם תבנית אחר כדי למנוע קריסות)
-          messageTemplateName = "refresh_remind";
+          // נדנוד CRM ללקוחה ישנה (refresh_remind) - דורש 3 פרמטרים
           messageComponents = [
             {
               type: "body",
               parameters: [
-                { type: "text", text: String(firstName || "לקוחה") },
-                { type: "text", text: String(months || "זמן מה") },
-                { type: "text", text: String(treatmentName || "טיפול") }
+                { type: "text", text: firstName || "לקוחה" },
+                { type: "text", text: months || "זמן מה" },
+                { type: "text", text: treatmentName || "טיפול" }
               ]
             }
           ];
         }
 
+        // 4. שולח את ההודעה דרך ה-API של מטא
         const waRes = await sendWhatsApp(cleanPhone, { 
           type: "template", 
           template: { 
@@ -166,6 +169,7 @@ export async function onRequest({ request, env, waitUntil }) {
           } 
         }, env);
 
+        // 5. מעדכן בטלגרם כדי שרינת תראה שהמערכת עבדה בשבילה
         if (waRes?.messages) {
           let session = await env.SESSIONS_KV.get(cleanPhone, { type: "json" }) || { threadId: null, humanMode: false, name: clientName };
           
@@ -174,6 +178,8 @@ export async function onRequest({ request, env, waitUntil }) {
               const topicRes = await sendTelegram("createForumTopic", { name: `🤖 ${clientName} (${cleanPhone.slice(-4)})` }, env);
               if (topicRes?.ok) {
                 session.threadId = topicRes.result.message_thread_id;
+                
+                // שמירה כפולה ל-KV: גם הסשן וגם מיפוי השם (חיוני להמשך עבודה תקינה של הבוט)
                 await Promise.all([
                   env.SESSIONS_KV.put(cleanPhone, JSON.stringify(session)),
                   env.SESSIONS_KV.put(`name_${session.threadId}`, clientName)
@@ -199,6 +205,7 @@ export async function onRequest({ request, env, waitUntil }) {
 
       const value = body.entry?.[0]?.changes?.[0]?.value;
 
+      // 1. מנגנון Read Receipts (וי כחול)
       const statuses = value?.statuses;
       if (statuses && statuses.length > 0) {
         const statusObj = statuses[0];
@@ -217,6 +224,7 @@ export async function onRequest({ request, env, waitUntil }) {
         return new Response("OK", { status: 200 });
       }
 
+      // 2. עדכון שם טופיק בטלגרם ע"י רינת
       if (body.message?.forum_topic_edited) {
         const tid = body.message.message_thread_id;
         const newName = body.message.forum_topic_edited.name.replace(/[✅🔴🆕]\s*/g, '').split(' (')[0].trim();
@@ -268,6 +276,7 @@ export async function onRequest({ request, env, waitUntil }) {
           const isUrgent = customerText.includes("דחוף");
           const disableNotification = !(buttonId === "human" || buttonId === "main_booking" || isUrgent || session.humanMode);
 
+          // --- זיהוי הגעה מקמפיין ממומן (Click-to-WhatsApp) ---
           let adInfo = "";
           if (msg.referral) {
             const adHeadline = msg.referral.headline ? `\n🏷️ כותרת: ${msg.referral.headline}` : "";
@@ -345,6 +354,7 @@ export async function onRequest({ request, env, waitUntil }) {
         }
       }
 
+      // 3. רינת עונה מטלגרם
       else if (body.message?.reply_to_message) {
         const threadId = body.message.message_thread_id;
         const parentText = body.message.reply_to_message.text || body.message.reply_to_message.caption || "";
