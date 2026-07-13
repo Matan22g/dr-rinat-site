@@ -111,8 +111,8 @@ export async function onRequest({ request, env, waitUntil }) {
       const body = await request.json();
 
       // =======================================================
-      // 🌟 NEW: CRM NUDGE BRIDGE LISTENER 🌟
-      // מאזין לבקשות שמגיעות מה-CRM כדי לשלוח נדנוד אוטומטי
+      // 🌟 CRM NUDGE BRIDGE LISTENER 🌟
+      // מאזין לבקשות שמגיעות מה-CRM כדי לשלוח נדנוד או תזכורת אוטומטית
       // =======================================================
       if (body.crm_nudge) {
         // 1. אימות אבטחה: מוודא שזה באמת ה-CRM שלנו
@@ -120,54 +120,56 @@ export async function onRequest({ request, env, waitUntil }) {
           return new Response("Unauthorized", { status: 401 });
         }
 
-        const { phone, clientName, treatmentNotes } = body;
+        const { phone, clientName, treatmentNotes, template, params, firstName, months, treatmentName } = body;
         
         // 2. ניקוי ונירמול המספר לפורמט WhatsApp
-        let cleanPhone = phone.replace(/\D/g, ''); // מוריד מקפים, רווחים וכו'
+        let cleanPhone = phone.replace(/\D/g, ''); 
         if (cleanPhone.startsWith('05')) {
-          cleanPhone = '972' + cleanPhone.substring(1); // הופך 05 ל-9725
+          cleanPhone = '972' + cleanPhone.substring(1); 
         }
         if (cleanPhone.startsWith('97205')) {
-          cleanPhone = cleanPhone.replace('97205', '9725'); // מקרה קצה אם הוזן +97205
+          cleanPhone = cleanPhone.replace('97205', '9725'); 
         }
 
-        // 3. שולח את טמפלייט הנדנוד של רינת
-// 3. שולח את טמפלייט הנדנוד המותאם אישית
-        // שים לב: המשתנים מגיעים בתוך ה-body ששלחנו מה-CRM
-        const { firstName, months, treatmentName } = body;
+        // 3. ניתוב תבניות (תזכורת תור מול נדנוד CRM)
+        let messageTemplateName = template || "refresh_remind";
+        let messageComponents = [];
 
-// 4. שולח את טמפלייט הנדנוד המותאם אישית
+        if (messageTemplateName === "appointment_reminder") {
+          // תזכורת תור למחר - דורש רק פרמטר אחד (שעה)
+          messageComponents = [
+            {
+              type: "body",
+              parameters: [
+                { type: "text", text: params?.[0] || "00:00" }
+              ]
+            }
+          ];
+        } else {
+          // נדנוד CRM ללקוחה ישנה (refresh_remind) - דורש 3 פרמטרים
+          messageComponents = [
+            {
+              type: "body",
+              parameters: [
+                { type: "text", text: firstName || "לקוחה" },
+                { type: "text", text: months || "זמן מה" },
+                { type: "text", text: treatmentName || "טיפול" }
+              ]
+            }
+          ];
+        }
+
+        // 4. שולח את ההודעה דרך ה-API של מטא
         const waRes = await sendWhatsApp(cleanPhone, { 
           type: "template", 
           template: { 
-            name: "refresh_remind", 
+            name: messageTemplateName, 
             language: { code: "he" },
-            components: [
-              {
-                type: "body",
-                parameters: [
-                  { 
-                    type: "text", 
-                    parameter_name: "customer", 
-                    text: firstName || "לקוחה" 
-                  },
-                  { 
-                    type: "text", 
-                    parameter_name: "time_frame", 
-                    text: months || "זמן מה" 
-                  },
-                  { 
-                    type: "text", 
-                    parameter_name: "session_type", 
-                    text: treatmentName || "טיפול" 
-                  }
-                ]
-              }
-            ]
+            components: messageComponents
           } 
         }, env);
 
-        // 4. מעדכן בטלגרם כדי שרינת תראה שהמערכת עבדה בשבילה
+        // 5. מעדכן בטלגרם כדי שרינת תראה שהמערכת עבדה בשבילה
         if (waRes?.messages) {
           let session = await env.SESSIONS_KV.get(cleanPhone, { type: "json" }) || { threadId: null, humanMode: false, name: clientName };
           
@@ -187,7 +189,7 @@ export async function onRequest({ request, env, waitUntil }) {
             if (session.threadId) {
               await sendTelegram("sendMessage", {
                 message_thread_id: session.threadId,
-                text: `🤖 *[מערכת ה-CRM]*\nנשלח בהצלחה נדנוד אוטומטי ללקוחה: ${clientName}\nעבור: ${treatmentNotes}\n\nPhone: ${cleanPhone}`,
+                text: `🤖 *[מערכת ה-CRM]*\nנשלחה בהצלחה הודעה אוטומטית ללקוחה: ${clientName}\nעבור: ${treatmentNotes}\n\nPhone: ${cleanPhone}`,
                 disable_notification: true
               }, env);
             }
