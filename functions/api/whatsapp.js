@@ -123,16 +123,16 @@ export async function onRequest({ request, env, waitUntil }) {
         const { phone, clientName, treatmentNotes } = body;
         
         // 2. ניקוי ונירמול המספר לפורמט WhatsApp
-        let cleanPhone = phone.replace(/\D/g, ''); // מוריד מקפים, רווחים וכו'
+        let cleanPhone = phone.replace(/\D/g, ''); 
         if (cleanPhone.startsWith('05')) {
-          cleanPhone = '972' + cleanPhone.substring(1); // הופך 05 ל-9725
+          cleanPhone = '972' + cleanPhone.substring(1); 
         }
         if (cleanPhone.startsWith('97205')) {
-          cleanPhone = cleanPhone.replace('97205', '9725'); // מקרה קצה אם הוזן +97205
+          cleanPhone = cleanPhone.replace('97205', '9725'); 
         }
 
-// 3. דינמיות: בחירת הטמפלייט בהתאם למה שנשלח מה-CRM
-        const { firstName, months, treatmentName, template, params } = body;
+        // 3. דינמיות: שליפת הנתונים מה-CRM כולל הודעת הריענון
+        const { firstName, months, treatmentName, refreshMessage, template, params } = body;
         
         let templatePayload = {};
         
@@ -145,23 +145,24 @@ export async function onRequest({ request, env, waitUntil }) {
               {
                 type: "body",
                 parameters: [
-                  { type: "text", text: params[0] || "00:00" } // הזמן שהעברנו במערך
+                  { type: "text", text: params[0] || "00:00" } 
                 ]
               }
             ]
           };
         } else {
-          // ברירת המחדל: נדנוד לטיפול חוזר (מגיע ממסך ה-CRM)
+          // הטמפלייט החדש והדינאמי (m_remind) מגיע ממסך ה-CRM
           templatePayload = {
-            name: "refresh_remind",
+            name: "m_remind",
             language: { code: "he" },
             components: [
               {
                 type: "body",
                 parameters: [
-                  { type: "text", parameter_name: "customer", text: firstName || "לקוחה" },
-                  { type: "text", parameter_name: "time_frame", text: months || "זמן מה" },
-                  { type: "text", parameter_name: "session_type", text: treatmentName || "טיפול" }
+                  { type: "text", text: firstName || "לקוחה" },
+                  { type: "text", text: months || "זמן מה" },
+                  { type: "text", text: treatmentName || "טיפול" },
+                  { type: "text", text: refreshMessage || "נשמח לראות אותך שוב לריענון או ייעוץ." }
                 ]
               }
             ]
@@ -184,7 +185,6 @@ export async function onRequest({ request, env, waitUntil }) {
               if (topicRes?.ok) {
                 session.threadId = topicRes.result.message_thread_id;
                 
-                // שמירה כפולה ל-KV: גם הסשן וגם מיפוי השם (חיוני להמשך עבודה תקינה של הבוט)
                 await Promise.all([
                   env.SESSIONS_KV.put(cleanPhone, JSON.stringify(session)),
                   env.SESSIONS_KV.put(`name_${session.threadId}`, clientName)
