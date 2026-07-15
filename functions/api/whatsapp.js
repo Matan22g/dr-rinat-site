@@ -159,10 +159,10 @@ export async function onRequest({ request, env, waitUntil }) {
               {
                 type: "body",
                 parameters: [
-                  { type: "text", text: firstName || "לקוחה" },
-                  { type: "text", text: months || "זמן מה" },
-                  { type: "text", text: treatmentName || "טיפול" },
-                  { type: "text", text: refreshMessage || "נשמח לראות אותך שוב לריענון או ייעוץ." }
+                  { type: "text", parameter_name: "customer", text: firstName || "לקוחה" },
+                  { type: "text", parameter_name: "time_frame", text: months || "זמן מה" },
+                  { type: "text", parameter_name: "session_type", text: treatmentName || "טיפול" },
+                  { type: "text", parameter_name: "refresh_message", text: refreshMessage || "נשמח לראות אותך שוב לריענון או ייעוץ." }
                 ]
               }
             ]
