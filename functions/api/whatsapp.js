@@ -234,9 +234,15 @@ export async function onRequest({ request, env, waitUntil }) {
         const rawName = value.contacts?.[0]?.profile?.name || "לקוחה";
 
         // =======================================================
-        // 🌟 PHASE C: Inbound WhatsApp -> D1 Persistence 🌟
+        // 🌟 PHASE C & D: Persistence & Queue Publish 🌟
         // =======================================================
         
+        let dbInsertSuccess = false;
+        const internalMessageId = crypto.randomUUID();
+        const messageType = msg.type;
+        let content = "";
+        let metadata = {};
+
         try {
           // 1. Early Idempotency Check
           const existingMsg = await env.DB.prepare(
@@ -254,7 +260,7 @@ export async function onRequest({ request, env, waitUntil }) {
           ).bind(from).first();
           const clientId = clientRecord ? clientRecord.id : null;
 
-          // 3. Get or Create Conversation (Atomic Upsert)
+          // 3. Get or Create Conversation
           const newConversationId = crypto.randomUUID();
           const convResult = await env.DB.prepare(`
             INSERT INTO conversations (id, phone, client_id, channel) 
@@ -268,10 +274,6 @@ export async function onRequest({ request, env, waitUntil }) {
           const finalConvId = convResult ? convResult.id : newConversationId;
 
           // 4. Content & Metadata Extraction
-          const messageType = msg.type;
-          let content = "";
-          let metadata = {};
-
           if (messageType === "text") {
             content = msg.text?.body || "";
           } else if (messageType === "interactive") {
@@ -288,8 +290,7 @@ export async function onRequest({ request, env, waitUntil }) {
           }
 
           // 5. Insert Message
-          const internalMessageId = crypto.randomUUID();
-          await env.DB.prepare(`
+          const insertResult = await env.DB.prepare(`
             INSERT INTO messages (id, conversation_id, channel, external_message_id, direction, sender_type, message_type, content, metadata)
             VALUES (?, ?, 'WHATSAPP', ?, 'INBOUND', 'CLIENT', ?, ?, ?)
             ON CONFLICT(channel, external_message_id) DO NOTHING
@@ -302,13 +303,35 @@ export async function onRequest({ request, env, waitUntil }) {
             JSON.stringify(metadata)
           ).run();
 
+          if (insertResult.meta.changes === 0) {
+            console.log(`[Idempotency] Duplicate blocked at INSERT: ${externalMessageId}`);
+            return new Response("OK", { status: 200 });
+          }
+
+          dbInsertSuccess = true;
+
         } catch (dbError) {
-          console.error("Phase C D1 Persistence Error:", dbError);
-          // Non-blocking: We log the error but let the original flow continue so Telegram doesn't break
+          console.error("D1 Persistence Error:", dbError);
+        }
+
+        // 6. Publish to Queue if feature flag is ON and DB insertion succeeded
+        if (dbInsertSuccess && env.USE_QUEUE === "true") {
+          try {
+            await env.AI_QUEUE.send({
+              internalMessageId: internalMessageId,
+              rawName: rawName
+            });
+            console.log(`[Queue] Message ${internalMessageId} sent to AI_QUEUE successfully.`);
+            return new Response("OK", { status: 200 }); // Stop here! The Consumer will handle Telegram.
+          } catch (queueError) {
+            console.error("Queue Send Error:", queueError);
+            // If the queue fails, we let it fall through to the Legacy Flow below
+            // to ensure the clinic still receives the message!
+          }
         }
 
         // =======================================================
-        // 🌟 EXISTING FLOW: Telegram & SESSIONS_KV 🌟
+        // 🌟 EXISTING FLOW: Telegram & SESSIONS_KV (Legacy Fallback) 🌟
         // =======================================================
 
         let session = await env.SESSIONS_KV.get(from, { type: "json" }) || { threadId: null, humanMode: false, name: rawName };
