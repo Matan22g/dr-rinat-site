@@ -111,18 +111,15 @@ export async function onRequest({ request, env, waitUntil }) {
       const body = await request.json();
 
       // =======================================================
-      // 🌟 NEW: CRM NUDGE BRIDGE LISTENER 🌟
-      // מאזין לבקשות שמגיעות מה-CRM כדי לשלוח נדנוד אוטומטי
+      // 🌟 CRM NUDGE BRIDGE LISTENER 🌟
       // =======================================================
       if (body.crm_nudge) {
-        // 1. אימות אבטחה: מוודא שזה באמת ה-CRM שלנו
         if (request.headers.get("Authorization") !== `Bearer ${env.CRM_WEBHOOK_SECRET}`) {
           return new Response("Unauthorized", { status: 401 });
         }
 
         const { phone, clientName, treatmentNotes } = body;
         
-        // 2. ניקוי ונירמול המספר לפורמט WhatsApp
         let cleanPhone = phone.replace(/\D/g, ''); 
         if (cleanPhone.startsWith('05')) {
           cleanPhone = '972' + cleanPhone.substring(1); 
@@ -131,13 +128,10 @@ export async function onRequest({ request, env, waitUntil }) {
           cleanPhone = cleanPhone.replace('97205', '9725'); 
         }
 
-        // 3. דינמיות: שליפת הנתונים מה-CRM כולל הודעת הריענון
         const { firstName, months, treatmentName, refreshMessage, template, params } = body;
-        
         let templatePayload = {};
         
         if (template === 'appointment_reminder') {
-          // תזכורת לתור קרוב (מגיע ממסך היומן)
           templatePayload = {
             name: "appointment_reminder",
             language: { code: "he" },
@@ -151,7 +145,6 @@ export async function onRequest({ request, env, waitUntil }) {
             ]
           };
         } else {
-          // הטמפלייט החדש והדינאמי (m_remind) מגיע ממסך ה-CRM
           templatePayload = {
             name: "m_remind",
             language: { code: "he" },
@@ -169,13 +162,11 @@ export async function onRequest({ request, env, waitUntil }) {
           };
         }
 
-        // שליחת הטמפלייט הנבחר לוואטסאפ
         const waRes = await sendWhatsApp(cleanPhone, { 
           type: "template", 
           template: templatePayload
         }, env);
 
-        // 4. מעדכן בטלגרם כדי שרינת תראה שהמערכת עבדה בשבילה
         if (waRes?.messages) {
           let session = await env.SESSIONS_KV.get(cleanPhone, { type: "json" }) || { threadId: null, humanMode: false, name: clientName };
           
@@ -184,7 +175,6 @@ export async function onRequest({ request, env, waitUntil }) {
               const topicRes = await sendTelegram("createForumTopic", { name: `🤖 ${clientName} (${cleanPhone.slice(-4)})` }, env);
               if (topicRes?.ok) {
                 session.threadId = topicRes.result.message_thread_id;
-                
                 await Promise.all([
                   env.SESSIONS_KV.put(cleanPhone, JSON.stringify(session)),
                   env.SESSIONS_KV.put(`name_${session.threadId}`, clientName)
@@ -206,7 +196,6 @@ export async function onRequest({ request, env, waitUntil }) {
           return Response.json({ success: false, error: waRes }, { status: 500 });
         }
       }
-      // =======================================================
 
       const value = body.entry?.[0]?.changes?.[0]?.value;
 
@@ -241,7 +230,87 @@ export async function onRequest({ request, env, waitUntil }) {
       const msg = value?.messages?.[0];
       if (msg) {
         const from = msg.from;
+        const externalMessageId = msg.id;
         const rawName = value.contacts?.[0]?.profile?.name || "לקוחה";
+
+        // =======================================================
+        // 🌟 PHASE C: Inbound WhatsApp -> D1 Persistence 🌟
+        // =======================================================
+        
+        try {
+          // 1. Early Idempotency Check
+          const existingMsg = await env.DB.prepare(
+            `SELECT id FROM messages WHERE channel = 'WHATSAPP' AND external_message_id = ?`
+          ).bind(externalMessageId).first();
+
+          if (existingMsg) {
+            console.log(`[Idempotency] Blocked duplicate external message: ${externalMessageId}`);
+            return new Response("OK", { status: 200 });
+          }
+
+          // 2. Client Resolution
+          const clientRecord = await env.DB.prepare(
+            `SELECT id FROM Clients WHERE phone = ?`
+          ).bind(from).first();
+          const clientId = clientRecord ? clientRecord.id : null;
+
+          // 3. Get or Create Conversation (Atomic Upsert)
+          const newConversationId = crypto.randomUUID();
+          const convResult = await env.DB.prepare(`
+            INSERT INTO conversations (id, phone, client_id, channel) 
+            VALUES (?, ?, ?, 'WHATSAPP')
+            ON CONFLICT(channel, phone) DO UPDATE SET 
+              client_id = excluded.client_id,
+              updated_at = CURRENT_TIMESTAMP
+            RETURNING id
+          `).bind(newConversationId, from, clientId).first();
+          
+          const finalConvId = convResult ? convResult.id : newConversationId;
+
+          // 4. Content & Metadata Extraction
+          const messageType = msg.type;
+          let content = "";
+          let metadata = {};
+
+          if (messageType === "text") {
+            content = msg.text?.body || "";
+          } else if (messageType === "interactive") {
+            content = msg.interactive?.button_reply?.title || "";
+            metadata.button_id = msg.interactive?.button_reply?.id;
+          } else if (messageType === "image") {
+            metadata.media_id = msg.image?.id;
+          } else if (messageType === "audio" || messageType === "voice") {
+            metadata.media_id = msg.audio?.id || msg.voice?.id;
+          }
+
+          if (msg.referral) {
+            metadata.referral = msg.referral;
+          }
+
+          // 5. Insert Message
+          const internalMessageId = crypto.randomUUID();
+          await env.DB.prepare(`
+            INSERT INTO messages (id, conversation_id, channel, external_message_id, direction, sender_type, message_type, content, metadata)
+            VALUES (?, ?, 'WHATSAPP', ?, 'INBOUND', 'CLIENT', ?, ?, ?)
+            ON CONFLICT(channel, external_message_id) DO NOTHING
+          `).bind(
+            internalMessageId, 
+            finalConvId, 
+            externalMessageId, 
+            messageType, 
+            content, 
+            JSON.stringify(metadata)
+          ).run();
+
+        } catch (dbError) {
+          console.error("Phase C D1 Persistence Error:", dbError);
+          // Non-blocking: We log the error but let the original flow continue so Telegram doesn't break
+        }
+
+        // =======================================================
+        // 🌟 EXISTING FLOW: Telegram & SESSIONS_KV 🌟
+        // =======================================================
+
         let session = await env.SESSIONS_KV.get(from, { type: "json" }) || { threadId: null, humanMode: false, name: rawName };
 
         const createNewTopic = async () => {
