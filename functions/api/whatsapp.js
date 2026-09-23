@@ -471,7 +471,7 @@ export async function onRequest({ request, env, waitUntil }) {
               {
                 delaySeconds:
                   isAiCandidate
-                    ? 3
+                    ? 2
                     : 0
               }
             );
