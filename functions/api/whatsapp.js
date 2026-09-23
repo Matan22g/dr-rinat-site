@@ -470,7 +470,7 @@ export async function onRequest({ request, env, waitUntil }) {
               queueBody,
               {
                 delaySeconds:
-                  isAiCandidate
+                  isAiCandidate && messageType === "text"
                     ? 2
                     : 0
               }
