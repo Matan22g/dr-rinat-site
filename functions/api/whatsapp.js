@@ -167,6 +167,65 @@ async function saveHumanOutbound(phone, waMessageId, messageType, content, env) 
   ).run();
 }
 
+async function saveAiOutbound(conversationId, waMessageId, content, env) {
+  if (!waMessageId) return;
+
+  await env.DB.prepare(`
+    INSERT OR IGNORE INTO messages (
+      id,
+      conversation_id,
+      channel,
+      external_message_id,
+      direction,
+      sender_type,
+      message_type,
+      content,
+      processed_at
+    )
+    VALUES (?, ?, 'WHATSAPP', ?, 'OUTBOUND', 'BOT', 'text', ?, CURRENT_TIMESTAMP)
+  `).bind(
+    crypto.randomUUID(),
+    conversationId,
+    waMessageId,
+    content
+  ).run();
+}
+
+async function answerTelegramCallback(
+  callbackQueryId,
+  text,
+  env,
+  showAlert = false
+) {
+  const res = await fetch(
+    `https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        callback_query_id: callbackQueryId,
+        text,
+        show_alert: showAlert
+      })
+    }
+  );
+
+  return await res.json();
+}
+
+async function clearPilotButtons(messageId, env) {
+  return sendTelegram(
+    "editMessageReplyMarkup",
+    {
+      message_id: messageId,
+      reply_markup: {
+        inline_keyboard: []
+      }
+    },
+    env
+  );
+}
+
 // --- Main Engine ---
 
 export async function onRequest({ request, env, waitUntil }) {
@@ -268,6 +327,427 @@ export async function onRequest({ request, env, waitUntil }) {
         } else {
           return Response.json({ success: false, error: waRes }, { status: 500 });
         }
+      }
+
+      // =======================================================
+      // 🧪 PILOT APPROVE / REJECT CALLBACKS
+      // =======================================================
+      if (body.callback_query) {
+        const callback = body.callback_query;
+        const data = String(callback.data || "");
+
+        const match =
+          data.match(/^pilot_(approve|reject):([0-9a-f-]{36})$/i);
+
+        if (!match) {
+          return new Response("OK", { status: 200 });
+        }
+
+        // Pending pilot buttons become inert if pilot mode is disabled.
+        if (env.AI_PILOT_MODE !== "true") {
+          await answerTelegramCallback(
+            callback.id,
+            "מצב הפיילוט כבוי",
+            env,
+            true
+          );
+
+          return new Response("OK", { status: 200 });
+        }
+
+        const action = match[1].toLowerCase();
+        const draftId = match[2];
+
+        const callbackMessageId =
+          callback.message?.message_id;
+
+        const threadId =
+          callback.message?.message_thread_id;
+
+        const draft = await env.DB.prepare(`
+    SELECT
+      d.id,
+      d.conversation_id,
+      d.ai_generation,
+      d.message,
+      d.attention,
+      d.intent,
+      d.reason,
+      d.status,
+      c.phone,
+      c.ai_generation AS current_generation,
+      c.human_until_ms
+    FROM ai_drafts d
+    JOIN conversations c
+      ON c.id = d.conversation_id
+    WHERE d.id = ?
+    LIMIT 1
+  `)
+          .bind(draftId)
+          .first();
+
+        if (!draft) {
+          await answerTelegramCallback(
+            callback.id,
+            "ההצעה לא נמצאה",
+            env,
+            true
+          );
+
+          return new Response("OK", { status: 200 });
+        }
+
+        // -------------------------------------------------------
+        // REJECT
+        // -------------------------------------------------------
+
+        if (action === "reject") {
+          const rejected = await env.DB.prepare(`
+      UPDATE ai_drafts
+      SET status = 'REJECTED',
+          decided_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+        AND status = 'PENDING'
+      RETURNING id
+    `)
+            .bind(draftId)
+            .first();
+
+          if (rejected) {
+            if (callbackMessageId) {
+              await clearPilotButtons(
+                callbackMessageId,
+                env
+              );
+            }
+
+            await answerTelegramCallback(
+              callback.id,
+              "ההצעה נדחתה",
+              env
+            );
+
+            if (threadId) {
+              await sendTelegram(
+                "sendMessage",
+                {
+                  message_thread_id: threadId,
+                  text: "❌ ההצעה של מאי נדחתה",
+                  disable_notification: true
+                },
+                env
+              );
+            }
+
+          } else {
+            await answerTelegramCallback(
+              callback.id,
+              "ההצעה כבר טופלה",
+              env,
+              true
+            );
+          }
+
+          return new Response("OK", { status: 200 });
+        }
+
+        // -------------------------------------------------------
+        // APPROVE
+        //
+        // Atomic PENDING -> SENDING claim.
+        // Only one callback can claim the draft, and only if:
+        // 1. generation is still current
+        // 2. Rinat has not taken over
+        // -------------------------------------------------------
+
+        const claimed = await env.DB.prepare(`
+    UPDATE ai_drafts
+    SET status = 'SENDING'
+    WHERE id = ?
+      AND status = 'PENDING'
+      AND EXISTS (
+        SELECT 1
+        FROM conversations c
+        WHERE c.id = ai_drafts.conversation_id
+          AND c.ai_generation = ai_drafts.ai_generation
+          AND COALESCE(c.human_until_ms, 0) <= ?
+      )
+    RETURNING
+      id,
+      conversation_id,
+      ai_generation,
+      message,
+      attention,
+      intent,
+      reason
+  `)
+          .bind(
+            draftId,
+            Date.now()
+          )
+          .first();
+
+        // Could not claim:
+        // stale generation / human takeover / already handled.
+        if (!claimed) {
+          const currentDraft = await env.DB.prepare(`
+    SELECT
+      d.status,
+      d.ai_generation,
+      c.ai_generation AS current_generation,
+      c.human_until_ms
+    FROM ai_drafts d
+    JOIN conversations c
+      ON c.id = d.conversation_id
+    WHERE d.id = ?
+    LIMIT 1
+  `)
+            .bind(draftId)
+            .first();
+
+          const isPending =
+            currentDraft?.status === "PENDING";
+
+          const isStale =
+            isPending &&
+            (
+              Number(currentDraft.current_generation ?? -1) !==
+              Number(currentDraft.ai_generation) ||
+              Number(currentDraft.human_until_ms || 0) >
+              Date.now()
+            );
+
+          // עדיין PENDING אבל כבר לא תקף:
+          // הגיעה הודעה חדשה או רינת לקחה שליטה.
+          if (isStale) {
+            const invalidated = await env.DB.prepare(`
+      UPDATE ai_drafts
+      SET status = 'INVALIDATED',
+          decided_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+        AND status = 'PENDING'
+      RETURNING id
+    `)
+              .bind(draftId)
+              .first();
+
+            if (invalidated && callbackMessageId) {
+              await clearPilotButtons(
+                callbackMessageId,
+                env
+              );
+            }
+
+            await answerTelegramCallback(
+              callback.id,
+              "ההצעה כבר לא עדכנית",
+              env,
+              true
+            );
+
+            return new Response("OK", { status: 200 });
+          }
+
+          // Callback אחר כבר תפס את ה-draft ושולח אותו כרגע.
+          // לא מוחקים את הכפתורים — אם השליחה תיכשל,
+          // ה-draft יחזור ל-PENDING ויהיה אפשר לנסות שוב.
+          if (currentDraft?.status === "SENDING") {
+            await answerTelegramCallback(
+              callback.id,
+              "ההצעה כבר בתהליך שליחה",
+              env
+            );
+
+            return new Response("OK", { status: 200 });
+          }
+
+          // יכול לקרות אם ניסיון שליחה מקביל נכשל
+          // והחזיר את ה-draft ל-PENDING.
+          if (currentDraft?.status === "PENDING") {
+            await answerTelegramCallback(
+              callback.id,
+              "השליחה לא הושלמה, אפשר לנסות שוב",
+              env,
+              true
+            );
+
+            return new Response("OK", { status: 200 });
+          }
+
+          // APPROVED / REJECTED / INVALIDATED
+          if (callbackMessageId) {
+            await clearPilotButtons(
+              callbackMessageId,
+              env
+            );
+          }
+
+          await answerTelegramCallback(
+            callback.id,
+            "ההצעה כבר טופלה",
+            env,
+            true
+          );
+
+          return new Response("OK", { status: 200 });
+        }
+        // Re-read D1 immediately before WhatsApp send.
+        const freshControl = await env.DB.prepare(`
+    SELECT
+      phone,
+      ai_generation,
+      human_until_ms
+    FROM conversations
+    WHERE id = ?
+    LIMIT 1
+  `)
+          .bind(claimed.conversation_id)
+          .first();
+
+        const stillCurrent =
+          Number(freshControl?.ai_generation ?? -1) ===
+          Number(claimed.ai_generation) &&
+          Number(freshControl?.human_until_ms || 0) <=
+          Date.now();
+
+        if (
+          !stillCurrent ||
+          !freshControl?.phone
+        ) {
+          await env.DB.prepare(`
+      UPDATE ai_drafts
+      SET status = 'INVALIDATED',
+          decided_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+        AND status = 'SENDING'
+    `)
+            .bind(draftId)
+            .run();
+
+          if (callbackMessageId) {
+            await clearPilotButtons(
+              callbackMessageId,
+              env
+            );
+          }
+
+          await answerTelegramCallback(
+            callback.id,
+            "ההצעה כבר לא עדכנית",
+            env,
+            true
+          );
+
+          return new Response("OK", { status: 200 });
+        }
+
+        await answerTelegramCallback(
+          callback.id,
+          "שולחת למטופלת…",
+          env
+        );
+
+        let waRes;
+
+        try {
+          waRes = await sendWhatsApp(
+            freshControl.phone,
+            {
+              type: "text",
+              text: {
+                body: claimed.message
+              }
+            },
+            env
+          );
+
+        } catch (error) {
+          console.error(
+            "Pilot approved WhatsApp send error:",
+            error
+          );
+        }
+
+        const waMessageId =
+          waRes?.messages?.[0]?.id || null;
+
+        // WhatsApp clearly failed:
+        // return draft to PENDING so Rinat may retry.
+        if (!waMessageId) {
+          await env.DB.prepare(`
+      UPDATE ai_drafts
+      SET status = 'PENDING'
+      WHERE id = ?
+        AND status = 'SENDING'
+    `)
+            .bind(draftId)
+            .run();
+
+          if (threadId) {
+            await sendTelegram(
+              "sendMessage",
+              {
+                message_thread_id: threadId,
+
+                text:
+                  `❌ שליחת ההצעה נכשלה: ` +
+                  `${waRes?.error?.message || "בעיה לא ידועה"}`,
+
+                disable_notification: false
+              },
+              env
+            );
+          }
+
+          return new Response("OK", { status: 200 });
+        }
+
+        // Save the bot answer only after WhatsApp confirmed it.
+        try {
+          await saveAiOutbound(
+            claimed.conversation_id,
+            waMessageId,
+            claimed.message,
+            env
+          );
+
+        } catch (error) {
+          console.error(
+            "Pilot approved outbound DB insert error:",
+            error
+          );
+        }
+
+        await env.DB.prepare(`
+    UPDATE ai_drafts
+    SET status = 'APPROVED',
+        decided_at = CURRENT_TIMESTAMP
+    WHERE id = ?
+      AND status = 'SENDING'
+  `)
+          .bind(draftId)
+          .run();
+
+        if (callbackMessageId) {
+          await clearPilotButtons(
+            callbackMessageId,
+            env
+          );
+        }
+
+        if (threadId) {
+          await sendTelegram(
+            "sendMessage",
+            {
+              message_thread_id: threadId,
+              text: "✅ אושר ונשלח למטופלת",
+              disable_notification: true
+            },
+            env
+          );
+        }
+
+        return new Response("OK", { status: 200 });
       }
 
       const value = body.entry?.[0]?.changes?.[0]?.value;
