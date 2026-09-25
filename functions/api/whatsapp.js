@@ -109,10 +109,13 @@ async function bumpAiGeneration(conversationId, env) {
 
 async function activateHumanMode(phone, env) {
   const session = await env.SESSIONS_KV.get(phone, { type: "json" }) || {};
+
   session.humanMode = true;
+  session.humanLastActivityAt = Date.now();
 
   await Promise.all([
     env.SESSIONS_KV.put(phone, JSON.stringify(session)),
+
     env.DB.prepare(`
       UPDATE conversations
       SET ai_generation = ai_generation + 1,
@@ -284,7 +287,7 @@ export async function onRequest({ request, env, waitUntil }) {
       if (body.message?.forum_topic_edited) {
         const tid = body.message.message_thread_id;
         const newName = body.message.forum_topic_edited.name
-          .replace(/[✅🔴🆕]\s*/g, '')
+          .replace(/[✅🔴🆕🤖]\s*/g, '')
           .split(' (')[0]
           .trim();
 
@@ -479,7 +482,7 @@ export async function onRequest({ request, env, waitUntil }) {
             console.log(
               `[Queue] Message ${internalMessageId} sent to AI_QUEUE` +
               `${aiGeneration != null ? ` generation=${aiGeneration}` : ""}` +
-              `${isAiCandidate ? " delay=3s" : ""}.`
+              `${isAiCandidate ? " delay=2s" : ""}.`
             );
 
             return new Response("OK", { status: 200 });
@@ -588,7 +591,7 @@ export async function onRequest({ request, env, waitUntil }) {
 
           if (requestedStart) {
             session.humanMode = false;
-
+            delete session.humanLastActivityAt;
             const task =
               env.SESSIONS_KV.put(
                 from,
@@ -714,6 +717,7 @@ export async function onRequest({ request, env, waitUntil }) {
           if (buttonId === "human") {
             session.humanMode =
               true;
+            session.humanLastActivityAt = Date.now();
 
             justActivatedHuman =
               true;
@@ -881,8 +885,88 @@ export async function onRequest({ request, env, waitUntil }) {
             body.message.text?.trim() ||
             "";
 
-          // Human takeover starts as soon as Dr. Rinat replies in Telegram.
-          // This invalidates any AI response that may already be in flight.
+          const isEnableAiCommand =
+            /^\/ai(?:@\w+)?$/i.test(textContent);
+
+          if (isEnableAiCommand) {
+            const session =
+              await env.SESSIONS_KV.get(
+                customerPhone,
+                { type: "json" }
+              ) || {};
+
+            const currentName =
+              session.name ||
+              "לקוחה";
+
+            if (!session.humanMode) {
+              await sendTelegram(
+                "sendMessage",
+                {
+                  message_thread_id: threadId,
+                  text: "🤖 מאי כבר פעילה",
+                  disable_notification: true
+                },
+                env
+              );
+
+              return new Response("OK", { status: 200 });
+            }
+
+            session.humanMode = false;
+            delete session.humanLastActivityAt;
+
+            await Promise.all([
+              env.SESSIONS_KV.put(
+                customerPhone,
+                JSON.stringify(session)
+              ),
+
+              // מבטל כל AI job ישן מתקופת השליטה האנושית.
+              env.DB.prepare(`
+      UPDATE conversations
+      SET ai_generation = ai_generation + 1,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE channel = 'WHATSAPP' AND phone = ?
+    `).bind(customerPhone).run(),
+
+              // הודעות שרינת טיפלה בהן לא ייענו רטרואקטיבית ע"י מאי.
+              env.DB.prepare(`
+      UPDATE messages
+      SET ai_consumed_at = CURRENT_TIMESTAMP
+      WHERE conversation_id IN (
+        SELECT id
+        FROM conversations
+        WHERE channel = 'WHATSAPP' AND phone = ?
+      )
+        AND LOWER(direction) = 'inbound'
+        AND ai_consumed_at IS NULL
+    `).bind(customerPhone).run(),
+
+              sendTelegram(
+                "sendMessage",
+                {
+                  message_thread_id: threadId,
+                  text: "🤖 מאי חזרה לפעילות",
+                  disable_notification: true
+                },
+                env
+              ),
+
+              sendTelegram(
+                "editForumTopic",
+                {
+                  message_thread_id: threadId,
+                  name: `🤖 ${currentName} (${customerPhone.slice(-4)})`
+                },
+                env
+              )
+            ]);
+
+            return new Response("OK", { status: 200 });
+          }
+
+          // תשובה רגילה של ד"ר רינת = takeover אנושי.
           const session =
             await activateHumanMode(
               customerPhone,
