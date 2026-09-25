@@ -8,6 +8,7 @@ const DEFAULT_FLOW = {
 
 // --- הגדרת Cache גלובלי בזיכרון ה-Worker (לשיפור ביצועים) ---
 let cachedBotFlow = null;
+const HUMAN_IDLE_MS = 3 * 60 * 60 * 1000;
 
 // --- Helper Functions ---
 
@@ -108,20 +109,32 @@ async function bumpAiGeneration(conversationId, env) {
 }
 
 async function activateHumanMode(phone, env) {
-  const session = await env.SESSIONS_KV.get(phone, { type: "json" }) || {};
+  const session =
+    await env.SESSIONS_KV.get(phone, { type: "json" }) || {};
 
+  const now = Date.now();
+  const humanUntilMs = now + HUMAN_IDLE_MS;
+
+  // KV נשאר mirror ל-UI בלבד.
   session.humanMode = true;
-  session.humanLastActivityAt = Date.now();
+  session.humanLastActivityAt = now;
 
   await Promise.all([
-    env.SESSIONS_KV.put(phone, JSON.stringify(session)),
+    env.SESSIONS_KV.put(
+      phone,
+      JSON.stringify(session)
+    ),
 
     env.DB.prepare(`
       UPDATE conversations
-      SET ai_generation = ai_generation + 1,
+      SET human_until_ms = ?,
+          ai_generation = ai_generation + 1,
           updated_at = CURRENT_TIMESTAMP
       WHERE channel = 'WHATSAPP' AND phone = ?
-    `).bind(phone).run()
+    `).bind(
+      humanUntilMs,
+      phone
+    ).run()
   ]);
 
   return session;
@@ -592,6 +605,12 @@ export async function onRequest({ request, env, waitUntil }) {
           if (requestedStart) {
             session.humanMode = false;
             delete session.humanLastActivityAt;
+            await env.DB.prepare(`
+              UPDATE conversations
+              SET human_until_ms = NULL,
+                  updated_at = CURRENT_TIMESTAMP
+              WHERE channel = 'WHATSAPP' AND phone = ?
+            `).bind(from).run();
             const task =
               env.SESSIONS_KV.put(
                 from,
@@ -718,7 +737,15 @@ export async function onRequest({ request, env, waitUntil }) {
             session.humanMode =
               true;
             session.humanLastActivityAt = Date.now();
-
+            await env.DB.prepare(`
+  UPDATE conversations
+  SET human_until_ms = ?,
+      updated_at = CURRENT_TIMESTAMP
+  WHERE channel = 'WHATSAPP' AND phone = ?
+`).bind(
+              Date.now() + HUMAN_IDLE_MS,
+              from
+            ).run();
             justActivatedHuman =
               true;
 
@@ -894,12 +921,23 @@ export async function onRequest({ request, env, waitUntil }) {
                 customerPhone,
                 { type: "json" }
               ) || {};
+            const control =
+              await env.DB.prepare(`
+    SELECT human_until_ms
+    FROM conversations
+    WHERE channel = 'WHATSAPP' AND phone = ?
+    LIMIT 1
+  `)
+                .bind(customerPhone)
+                .first();
 
+            const humanIsActive =
+              Number(control?.human_until_ms || 0) > Date.now();
             const currentName =
               session.name ||
               "לקוחה";
 
-            if (!session.humanMode) {
+            if (!humanIsActive) {
               await sendTelegram(
                 "sendMessage",
                 {
@@ -924,9 +962,10 @@ export async function onRequest({ request, env, waitUntil }) {
 
               // מבטל כל AI job ישן מתקופת השליטה האנושית.
               env.DB.prepare(`
-      UPDATE conversations
-      SET ai_generation = ai_generation + 1,
-          updated_at = CURRENT_TIMESTAMP
+UPDATE conversations
+SET human_until_ms = NULL,
+    ai_generation = ai_generation + 1,
+    updated_at = CURRENT_TIMESTAMP
       WHERE channel = 'WHATSAPP' AND phone = ?
     `).bind(customerPhone).run(),
 
