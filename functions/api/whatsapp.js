@@ -8,8 +8,7 @@ const DEFAULT_FLOW = {
 
 // --- הגדרת Cache גלובלי בזיכרון ה-Worker (לשיפור ביצועים) ---
 let cachedBotFlow = null;
-const HUMAN_IDLE_MS = 60 * 1000;
-
+const HUMAN_IDLE_MS = 3 * 60 * 60 * 1000;
 // --- Helper Functions ---
 
 async function forwardAudioToTelegram(mediaId, threadId, caption, disableNotification, env) {
