@@ -109,10 +109,16 @@ async function bumpAiGeneration(conversationId, env) {
 
 async function activateHumanMode(phone, env) {
   const session =
-    await env.SESSIONS_KV.get(phone, { type: "json" }) || {};
+    await env.SESSIONS_KV.get(
+      phone,
+      { type: "json" }
+    ) || {};
 
-  const now = Date.now();
-  const humanUntilMs = now + HUMAN_IDLE_MS;
+  const now =
+    Date.now();
+
+  const humanUntilMs =
+    now + HUMAN_IDLE_MS;
 
   // KV נשאר mirror ל-UI בלבד.
   session.humanMode = true;
@@ -129,16 +135,35 @@ async function activateHumanMode(phone, env) {
       SET human_until_ms = ?,
           ai_generation = ai_generation + 1,
           updated_at = CURRENT_TIMESTAMP
-      WHERE channel = 'WHATSAPP' AND phone = ?
-    `).bind(
-      humanUntilMs,
-      phone
-    ).run()
+      WHERE channel = 'WHATSAPP'
+        AND phone = ?
+    `)
+      .bind(
+        humanUntilMs,
+        phone
+      )
+      .run(),
+
+    // אם רינת לקחה שליטה,
+    // שום Draft ישן של מאי כבר לא רלוונטי.
+    env.DB.prepare(`
+      UPDATE ai_drafts
+      SET status = 'INVALIDATED',
+          decided_at = CURRENT_TIMESTAMP
+      WHERE conversation_id IN (
+        SELECT id
+        FROM conversations
+        WHERE channel = 'WHATSAPP'
+          AND phone = ?
+      )
+        AND status = 'PENDING'
+    `)
+      .bind(phone)
+      .run()
   ]);
 
   return session;
 }
-
 async function saveHumanOutbound(phone, waMessageId, messageType, content, env) {
   if (!waMessageId) return;
 
