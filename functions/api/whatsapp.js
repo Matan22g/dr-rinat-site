@@ -319,12 +319,24 @@ export async function onRequest({ request, env, waitUntil }) {
             actorPresent: Boolean(actor?.id),
             actorAllowed: Boolean(actor?.id) && allowed.includes(String(actor.id)),
             actorIsBot: Boolean(actor?.is_bot),
+            forumTopicEdited: Boolean(message?.forum_topic_edited),
             sentAsChat: Boolean(message?.sender_chat),
             chatMatches: Boolean(env.TELEGRAM_CHAT_ID) && String(message?.chat?.id) === String(env.TELEGRAM_CHAT_ID),
             mixedEnvelope: Boolean(body.callback_query && body.message) || Object.hasOwn(body, 'crm_nudge') || Object.hasOwn(body, 'entry') || Object.hasOwn(body, 'object')
           }));
         }
-        return new Response('Unauthorized', { status: 401 });
+        // Confirm receipt of authentic but unsupported/unauthorized Telegram
+        // updates without executing them. Non-2xx makes Telegram retry forever
+        // until its retry budget expires, including bot-generated topic events.
+        const authenticTelegram = body && typeof body === 'object' &&
+          !Array.isArray(body) && Number.isSafeInteger(body.update_id) &&
+          !Object.hasOwn(body, 'crm_nudge') && !Object.hasOwn(body, 'entry') &&
+          !Object.hasOwn(body, 'object') && !(body.message && body.callback_query) &&
+          Boolean(env.TELEGRAM_WEBHOOK_SECRET) &&
+          request.headers.get('X-Telegram-Bot-Api-Secret-Token') === env.TELEGRAM_WEBHOOK_SECRET;
+        return new Response(authenticTelegram ? 'Ignored' : 'Unauthorized', {
+          status: authenticTelegram ? 200 : 401
+        });
       }
 
       // =======================================================
