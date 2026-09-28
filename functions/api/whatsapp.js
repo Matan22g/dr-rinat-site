@@ -398,6 +398,7 @@ export async function onRequest({ request, env, waitUntil }) {
       d.attention,
       d.intent,
       d.reason,
+      d.identity_mode,
       d.status,
       c.phone,
       c.ai_generation AS current_generation,
@@ -504,7 +505,8 @@ export async function onRequest({ request, env, waitUntil }) {
       message,
       attention,
       intent,
-      reason
+      reason,
+      identity_mode
   `)
           .bind(
             draftId,
@@ -742,7 +744,34 @@ export async function onRequest({ request, env, waitUntil }) {
             error
           );
         }
-
+        const identityWasDisclosed =
+          claimed.identity_mode !==
+            "none" ||
+          claimed.intent ===
+            "identity";
+        
+        if (identityWasDisclosed) {
+          try {
+            await env.DB.prepare(`
+              UPDATE conversations
+              SET ai_identity_disclosed_at =
+                    CURRENT_TIMESTAMP,
+                  updated_at =
+                    CURRENT_TIMESTAMP
+              WHERE id = ?
+            `)
+              .bind(
+                claimed.conversation_id
+              )
+              .run();
+        
+          } catch (error) {
+            console.error(
+              "Pilot identity disclosure update error:",
+              error
+            );
+          }
+        }
         await env.DB.prepare(`
     UPDATE ai_drafts
     SET status = 'APPROVED',
