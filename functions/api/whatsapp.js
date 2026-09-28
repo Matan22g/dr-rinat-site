@@ -1,3 +1,40 @@
+
+// Authenticate every supported POST envelope before database or network actions.
+async function authenticateWebhook(request, body, rawBody, env) {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return false;
+  const crm = Object.hasOwn(body, 'crm_nudge');
+  const telegram = Object.hasOwn(body, 'update_id') || Object.hasOwn(body, 'callback_query') || Object.hasOwn(body, 'message');
+  const meta = Object.hasOwn(body, 'entry') || Object.hasOwn(body, 'object');
+  if ([crm, telegram, meta].filter(Boolean).length !== 1) return false;
+  if (crm) return Boolean(env.CRM_WEBHOOK_SECRET) &&
+    request.headers.get('Authorization') === 'Bearer ' + env.CRM_WEBHOOK_SECRET;
+  if (telegram) {
+    if (!env.TELEGRAM_WEBHOOK_SECRET ||
+        request.headers.get('X-Telegram-Bot-Api-Secret-Token') !== env.TELEGRAM_WEBHOOK_SECRET) return false;
+    if (body.callback_query && body.message) return false;
+    const message = body.callback_query?.message || body.message;
+    const actor = body.callback_query?.from || message?.from;
+    const allowed = String(env.TELEGRAM_ALLOWED_USER_IDS || '').split(',').map(id => id.trim()).filter(Boolean);
+    return Boolean(env.TELEGRAM_CHAT_ID && actor?.id && !actor.is_bot && !message?.sender_chat &&
+      String(message?.chat?.id) === String(env.TELEGRAM_CHAT_ID) && allowed.includes(String(actor.id)));
+  }
+  if (!env.META_APP_SECRET || !env.PHONE_NUMBER_ID || body.object !== 'whatsapp_business_account') return false;
+  const signature = request.headers.get('X-Hub-Signature-256') || '';
+  if (!/^sha256=[0-9a-f]{64}$/i.test(signature)) return false;
+  const bytes = Uint8Array.from(signature.slice(7).match(/../g), pair => parseInt(pair, 16));
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(env.META_APP_SECRET),
+    { name: 'HMAC', hash: 'SHA-256' }, false, ['verify']);
+  if (!await crypto.subtle.verify('HMAC', key, bytes, rawBody)) return false;
+  return Array.isArray(body.entry) && body.entry.length > 0 && body.entry.every(entry =>
+    Array.isArray(entry.changes) && entry.changes.length > 0 && entry.changes.every(change =>
+      String(change.value?.metadata?.phone_number_id) === String(env.PHONE_NUMBER_ID)));
+}
+
+async function matchesTelegramTopic(phone, threadId, env) {
+  if (!phone || !threadId) return false;
+  const session = await env.SESSIONS_KV.get(phone, { type: 'json' });
+  return Boolean(session?.threadId && String(session.threadId) === String(threadId));
+}
 // --- Fallback Config (למקרה שה-KV ריק) ---
 const DEFAULT_FLOW = {
   "start": {
@@ -256,7 +293,7 @@ async function clearPilotButtons(messageId, env) {
 export async function onRequest({ request, env, waitUntil }) {
   if (request.method === "GET") {
     const { searchParams } = new URL(request.url);
-    if (searchParams.get("hub.verify_token") === env.VERIFY_TOKEN) {
+    if (env.VERIFY_TOKEN && searchParams.get("hub.mode") === "subscribe" && searchParams.get("hub.challenge") && searchParams.get("hub.verify_token") === env.VERIFY_TOKEN) {
       return new Response(searchParams.get("hub.challenge"), { status: 200 });
     }
     return new Response("Forbidden", { status: 403 });
@@ -264,7 +301,13 @@ export async function onRequest({ request, env, waitUntil }) {
 
   if (request.method === "POST") {
     try {
-      const body = await request.json();
+      const rawBody = await request.arrayBuffer();
+      let body;
+      try { body = JSON.parse(new TextDecoder().decode(rawBody)); }
+      catch { return new Response('Bad Request', { status: 400 }); }
+      if (!await authenticateWebhook(request, body, rawBody, env)) {
+        return new Response('Unauthorized', { status: 401 });
+      }
 
       // =======================================================
       // 🌟 CRM NUDGE BRIDGE LISTENER 🌟
@@ -426,6 +469,10 @@ export async function onRequest({ request, env, waitUntil }) {
         // -------------------------------------------------------
         // REJECT
         // -------------------------------------------------------
+
+        if (!await matchesTelegramTopic(draft.phone, threadId, env)) {
+          return new Response('Forbidden', { status: 403 });
+        }
 
         if (action === "reject") {
           const rejected = await env.DB.prepare(`
@@ -1435,6 +1482,10 @@ export async function onRequest({ request, env, waitUntil }) {
         if (phoneMatch) {
           const customerPhone =
             phoneMatch[1];
+
+          if (!await matchesTelegramTopic(customerPhone, threadId, env)) {
+            return new Response('Forbidden', { status: 403 });
+          }
 
           const isVoice =
             Boolean(
