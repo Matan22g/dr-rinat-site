@@ -306,6 +306,24 @@ export async function onRequest({ request, env, waitUntil }) {
       try { body = JSON.parse(new TextDecoder().decode(rawBody)); }
       catch { return new Response('Bad Request', { status: 400 }); }
       if (!await authenticateWebhook(request, body, rawBody, env)) {
+        // Booleans only: never log header values, IDs, or message content.
+        if (body && typeof body === 'object' &&
+            (body.message || body.callback_query || Object.hasOwn(body, 'update_id'))) {
+          const message = body.callback_query?.message || body.message;
+          const actor = body.callback_query?.from || message?.from;
+          const allowed = String(env.TELEGRAM_ALLOWED_USER_IDS || '').split(',').map(id => id.trim()).filter(Boolean);
+          console.warn('TELEGRAM_AUTH_REJECTED', JSON.stringify({
+            kind: body.callback_query ? 'callback' : body.message ? 'message' : 'other',
+            secretConfigured: Boolean(env.TELEGRAM_WEBHOOK_SECRET),
+            secretMatches: Boolean(env.TELEGRAM_WEBHOOK_SECRET) && request.headers.get('X-Telegram-Bot-Api-Secret-Token') === env.TELEGRAM_WEBHOOK_SECRET,
+            actorPresent: Boolean(actor?.id),
+            actorAllowed: Boolean(actor?.id) && allowed.includes(String(actor.id)),
+            actorIsBot: Boolean(actor?.is_bot),
+            sentAsChat: Boolean(message?.sender_chat),
+            chatMatches: Boolean(env.TELEGRAM_CHAT_ID) && String(message?.chat?.id) === String(env.TELEGRAM_CHAT_ID),
+            mixedEnvelope: Boolean(body.callback_query && body.message) || Object.hasOwn(body, 'crm_nudge') || Object.hasOwn(body, 'entry') || Object.hasOwn(body, 'object')
+          }));
+        }
         return new Response('Unauthorized', { status: 401 });
       }
 
