@@ -1040,6 +1040,14 @@ export async function onRequest({ request, env, waitUntil }) {
 
             const isAiTestNumber = aiTestNumbers.includes(from);
 
+            const isPilotAll =
+              env.AI_PILOT_MODE === "true" &&
+              env.AI_PILOT_ALL === "true";
+
+            const isAiEnabled =
+              isPilotAll ||
+              isAiTestNumber;
+
             const buttonId =
               messageType === "interactive"
                 ? metadata.button_id
@@ -1052,7 +1060,7 @@ export async function onRequest({ request, env, waitUntil }) {
               );
 
             const isAiCandidate =
-              isAiTestNumber &&
+              isAiEnabled &&
               (
                 (
                   messageType === "text" &&
@@ -1067,7 +1075,7 @@ export async function onRequest({ request, env, waitUntil }) {
 
             // Menu interactions also invalidate an older in-flight AI answer.
             const shouldInvalidateAi =
-              isAiTestNumber &&
+              isAiEnabled &&
               (
                 isAiCandidate ||
                 requestedStart ||
