@@ -1,3 +1,7 @@
+function isOwnPrivateAdminChat(message, actor = message?.from) {
+  return Boolean(message?.chat?.type === 'private' && actor?.id &&
+    String(message.chat.id) === String(actor.id));
+}
 
 // Authenticate every supported POST envelope before database or network actions.
 async function authenticateWebhook(request, body, rawBody, env) {
@@ -15,8 +19,10 @@ async function authenticateWebhook(request, body, rawBody, env) {
     const message = body.callback_query?.message || body.message;
     const actor = body.callback_query?.from || message?.from;
     const allowed = String(env.TELEGRAM_ALLOWED_USER_IDS || '').split(',').map(id => id.trim()).filter(Boolean);
-    return Boolean(env.TELEGRAM_CHAT_ID && actor?.id && !actor.is_bot && !message?.sender_chat &&
-      String(message?.chat?.id) === String(env.TELEGRAM_CHAT_ID) && allowed.includes(String(actor.id)));
+    const isClinicChat = Boolean(env.TELEGRAM_CHAT_ID) &&
+      String(message?.chat?.id) === String(env.TELEGRAM_CHAT_ID);
+    return Boolean(actor?.id && !actor.is_bot && !message?.sender_chat &&
+      (isClinicChat || isOwnPrivateAdminChat(message, actor)) && allowed.includes(String(actor.id)));
   }
   if (!env.META_APP_SECRET || !env.PHONE_NUMBER_ID || body.object !== 'whatsapp_business_account') return false;
   const signature = request.headers.get('X-Hub-Signature-256') || '';
@@ -322,6 +328,7 @@ export async function onRequest({ request, env, waitUntil }) {
             forumTopicEdited: Boolean(message?.forum_topic_edited),
             sentAsChat: Boolean(message?.sender_chat),
             chatMatches: Boolean(env.TELEGRAM_CHAT_ID) && String(message?.chat?.id) === String(env.TELEGRAM_CHAT_ID),
+            privateChatMatches: isOwnPrivateAdminChat(message, actor),
             mixedEnvelope: Boolean(body.callback_query && body.message) || Object.hasOwn(body, 'crm_nudge') || Object.hasOwn(body, 'entry') || Object.hasOwn(body, 'object')
           }));
         }
@@ -337,6 +344,21 @@ export async function onRequest({ request, env, waitUntil }) {
         return new Response(authenticTelegram ? 'Ignored' : 'Unauthorized', {
           status: authenticTelegram ? 200 : 401
         });
+      }
+
+      // Private admin chat is only an authenticated Queue producer.
+      // D1 queries and summary delivery are owned by whatsapp-consumer.
+      if (isOwnPrivateAdminChat(body.message)) {
+        const chatId = String(body.message.chat.id);
+        const text = body.message.text?.trim() || '';
+
+        await env.AI_QUEUE.send({
+          type: 'ADMIN_CHAT_MESSAGE',
+          chatId,
+          text
+        }, { delaySeconds: 0 });
+
+        return new Response('OK', { status: 200 });
       }
 
       // =======================================================
