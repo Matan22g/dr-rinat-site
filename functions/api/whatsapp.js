@@ -259,6 +259,105 @@ async function saveAiOutbound(conversationId, waMessageId, content, env) {
   ).run();
 }
 
+function normalizeAutomatedContextValue(value, fallback, maxLength = 160) {
+  const normalized = String(value || '')
+    .replace(/[\r\n\t]+/g, ' ')
+    .replace(/[\[\]]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, maxLength);
+
+  return normalized || fallback;
+}
+
+function buildAutomatedTemplateHistory({
+  template,
+  params,
+  months,
+  treatmentName,
+  refreshMessage
+}) {
+  if (template === 'appointment_reminder') {
+    const time = normalizeAutomatedContextValue(params?.[0], 'שעה שלא צוינה', 24);
+
+    return {
+      content: `[הודעה אוטומטית מהקליניקה: תזכורת לתור מחר בשעה ${time}]`,
+      metadata: {
+        automated: true,
+        source: 'crm',
+        template: 'appointment_reminder',
+        parameters: { time }
+      }
+    };
+  }
+
+  const normalizedMonths = normalizeAutomatedContextValue(months, 'זמן מה', 60);
+  const normalizedTreatment = normalizeAutomatedContextValue(treatmentName, 'טיפול', 100);
+  const normalizedMessage = normalizeAutomatedContextValue(
+    refreshMessage,
+    'נשמח לראות אותך שוב לריענון או ייעוץ.',
+    240
+  );
+
+  return {
+    content: `[הודעה אוטומטית מהקליניקה לגבי ${normalizedTreatment}, לאחר ${normalizedMonths}: ${normalizedMessage}]`,
+    metadata: {
+      automated: true,
+      source: 'crm',
+      template: 'm_remind',
+      parameters: {
+        months: normalizedMonths,
+        treatment: normalizedTreatment
+      }
+    }
+  };
+}
+
+async function saveAutomatedOutbound(phone, waMessageId, historyRecord, env) {
+  if (!phone || !waMessageId || !historyRecord?.content) return;
+
+  const clientRecord = await env.DB.prepare(
+    `SELECT id FROM Clients WHERE phone = ? LIMIT 1`
+  ).bind(phone).first();
+
+  const newConversationId = crypto.randomUUID();
+
+  await env.DB.batch([
+    env.DB.prepare(`
+      INSERT INTO conversations (id, phone, client_id, channel)
+      VALUES (?, ?, ?, 'WHATSAPP')
+      ON CONFLICT(channel, phone) DO UPDATE SET
+        client_id = COALESCE(excluded.client_id, client_id),
+        updated_at = CURRENT_TIMESTAMP
+    `).bind(newConversationId, phone, clientRecord?.id || null),
+
+    env.DB.prepare(`
+      INSERT OR IGNORE INTO messages (
+        id,
+        conversation_id,
+        channel,
+        external_message_id,
+        direction,
+        sender_type,
+        message_type,
+        content,
+        metadata,
+        processed_at
+      )
+      SELECT ?, id, 'WHATSAPP', ?, 'OUTBOUND', 'SYSTEM', 'template', ?, ?, CURRENT_TIMESTAMP
+      FROM conversations
+      WHERE channel = 'WHATSAPP' AND phone = ?
+      LIMIT 1
+    `).bind(
+      crypto.randomUUID(),
+      waMessageId,
+      historyRecord.content,
+      JSON.stringify(historyRecord.metadata || {}),
+      phone
+    )
+  ]);
+}
+
 async function answerTelegramCallback(
   callbackQueryId,
   text,
@@ -382,6 +481,14 @@ export async function onRequest({ request, env, waitUntil }) {
         const { firstName, months, treatmentName, refreshMessage, template, params } = body;
         let templatePayload = {};
 
+        const automatedHistory = buildAutomatedTemplateHistory({
+          template,
+          params,
+          months,
+          treatmentName,
+          refreshMessage
+        });
+
         if (template === 'appointment_reminder') {
           templatePayload = {
             name: "appointment_reminder",
@@ -419,6 +526,25 @@ export async function onRequest({ request, env, waitUntil }) {
         }, env);
 
         if (waRes?.messages) {
+          const waMessageId = waRes.messages[0]?.id;
+
+          try {
+            await saveAutomatedOutbound(
+              cleanPhone,
+              waMessageId,
+              automatedHistory,
+              env
+            );
+          } catch (error) {
+            // WhatsApp already accepted the reminder. Never trigger a duplicate
+            // customer message merely because its history record failed.
+            console.error('CRM_AUTOMATED_HISTORY_PERSIST_FAILED', {
+              template: automatedHistory.metadata.template,
+              hasWhatsAppMessageId: Boolean(waMessageId),
+              error: error instanceof Error ? error.message : String(error)
+            });
+          }
+
           let session = await env.SESSIONS_KV.get(cleanPhone, { type: "json" }) || { threadId: null, humanMode: false, name: clientName };
 
           const notifyTelegram = async () => {
@@ -1765,7 +1891,10 @@ SET human_until_ms = NULL,
                 "template";
 
               outboundContent =
-                null;
+                buildAutomatedTemplateHistory({
+                  template: "appointment_reminder",
+                  params: [timeString]
+                }).content;
 
               waRes =
                 await sendWhatsApp(
