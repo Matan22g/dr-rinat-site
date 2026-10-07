@@ -75,7 +75,7 @@ async function forwardAudioToTelegram(mediaId, threadId, caption, disableNotific
   } catch (e) { console.error("Audio forward error:", e); return false; }
 }
 
-async function forwardImageToTelegram(mediaId, threadId, caption, disableNotification, env) {
+async function forwardImageToTelegram(mediaId, threadId, caption, disableNotification, env, customerCaption = "") {
   try {
     const mediaRes = await fetch(`https://graph.facebook.com/v18.0/${mediaId}`, {
       headers: { "Authorization": `Bearer ${env.WHATSAPP_TOKEN}` }
@@ -88,26 +88,44 @@ async function forwardImageToTelegram(mediaId, threadId, caption, disableNotific
       formData.append("chat_id", env.TELEGRAM_CHAT_ID);
       formData.append("message_thread_id", threadId);
       formData.append("photo", fileBlob, "photo.jpg");
-      formData.append("caption", caption);
+      const fullCaption = customerCaption ? `${caption}\n\n💬 כיתוב: ${customerCaption}` : caption;
+      // Telegram photo captions are limited to 1024 characters. Preserve long
+      // customer captions in a reply to the photo rather than dropping text.
+      const separateCaption = fullCaption.length > 1024;
+      formData.append("caption", separateCaption ? caption : fullCaption);
       formData.append("disable_notification", disableNotification ? "true" : "false");
-      await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendPhoto`, { method: "POST", body: formData });
+      const sent = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendPhoto`, { method: "POST", body: formData });
+      const sentData = await sent.json();
+      if (!sent.ok || !sentData.ok) return false;
+      if (separateCaption && customerCaption) {
+        const textResult = await sendTelegram("sendMessage", {
+          message_thread_id: threadId,
+          text: `${caption}\n\n💬 כיתוב: ${customerCaption}`,
+          reply_parameters: { message_id: sentData.result.message_id },
+          disable_notification: disableNotification
+        }, env);
+        if (!textResult.ok) return false;
+      }
       return true;
     }
   } catch (e) { return false; }
 }
 
-async function getTelegramFile(fileId, env) {
+async function getTelegramFile(fileId, env, mimeType = "audio/ogg") {
   const res = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/getFile?file_id=${fileId}`);
-  const { result } = await res.json();
+  const data = await res.json();
+  if (!res.ok || !data.ok || !data.result?.file_path) throw new Error("לא ניתן להוריד את הקובץ מטלגרם");
+  const { result } = data;
   const fileRes = await fetch(`https://api.telegram.org/file/bot${env.TELEGRAM_BOT_TOKEN}/${result.file_path}`);
+  if (!fileRes.ok) throw new Error("הורדת הקובץ מטלגרם נכשלה");
   const arrayBuffer = await fileRes.arrayBuffer();
-  return new Blob([arrayBuffer], { type: "audio/ogg" });
+  return new Blob([arrayBuffer], { type: mimeType });
 }
 
-async function uploadToWhatsApp(blob, env) {
+async function uploadToWhatsApp(blob, env, fileName = "voice.ogg") {
   if (!blob) return null;
   const formData = new FormData();
-  formData.append("file", blob, "voice.ogg");
+  formData.append("file", blob, fileName);
   formData.append("messaging_product", "whatsapp");
   const res = await fetch(`https://graph.facebook.com/v18.0/${env.PHONE_NUMBER_ID}/media`, {
     method: "POST",
@@ -1130,6 +1148,7 @@ export async function onRequest({ request, env, waitUntil }) {
             metadata.button_id = msg.interactive?.button_reply?.id;
 
           } else if (messageType === "image") {
+            content = msg.image?.caption || "";
             metadata.media_id = msg.image?.id;
 
           } else if (messageType === "audio" || messageType === "voice") {
@@ -1448,7 +1467,8 @@ export async function onRequest({ request, env, waitUntil }) {
                 session.threadId,
                 `👤 מאת: ${currentName}\n🖼️ תמונה\n\nPhone: ${from}${adInfo}`,
                 disableNotification,
-                env
+                env,
+                msg.image.caption || ""
               )
             );
 
@@ -1677,6 +1697,12 @@ export async function onRequest({ request, env, waitUntil }) {
             Boolean(
               body.message.voice
             );
+
+          const photo = Array.isArray(body.message.photo)
+            ? body.message.photo.reduce((largest, candidate) =>
+                !largest || candidate.width * candidate.height > largest.width * largest.height
+                  ? candidate : largest, null)
+            : null;
 
           const textContent =
             body.message.text?.trim() ||
@@ -1930,6 +1956,21 @@ SET human_until_ms = NULL,
                   },
                   env
                 );
+            }
+
+            else if (photo) {
+              outboundType = "image";
+              outboundContent = body.message.caption || null;
+              const imageBlob = await getTelegramFile(photo.file_id, env, "image/jpeg");
+              const mediaId = await uploadToWhatsApp(imageBlob, env, "photo.jpg");
+              if (!mediaId) throw new Error("העלאת התמונה לווצאפ נכשלה");
+              waRes = await sendWhatsApp(customerPhone, {
+                type: "image",
+                image: {
+                  id: mediaId,
+                  ...(outboundContent ? { caption: outboundContent } : {})
+                }
+              }, env);
             }
 
             else if (isVoice) {
