@@ -277,6 +277,45 @@ async function saveAiOutbound(conversationId, waMessageId, content, env) {
   ).run();
 }
 
+// Booking delivery is committed with the outbound history and draft status.
+// Retry only the database write, never the already accepted WhatsApp send.
+async function saveBookingDelivery(draft, waMessageId, deliveredAt, env) {
+  const booking = JSON.parse(draft.booking_metadata);
+  const slots = booking.action?.type === 'offer' ? booking.booking_slots : null;
+  if (slots && (!Array.isArray(slots) || !slots.length || slots.length > 6 || slots.some(slot => {
+    const date = new Date(slot.date + 'T12:00:00Z');
+    return !Number.isFinite(date.getTime()) || date.toISOString().slice(0, 10) !== slot.date ||
+      !/^([01]\d|2[0-3]):(?:00|30)$/.test(slot.time);
+  }) || new Set(slots.map(slot => slot.date + 'T' + slot.time)).size !== slots.length ||
+    JSON.stringify([...booking.action.slot_ids].sort()) !== JSON.stringify(slots.map(slot => slot.date + 'T' + slot.time).sort()))) {
+    throw new Error('Invalid stored booking delivery');
+  }
+  if (booking.action?.type === 'offer' && !slots) throw new Error('Missing stored booking slots');
+  const outboundId = crypto.randomUUID();
+  const proof = JSON.stringify({ ai_draft_id: draft.id, delivered_at_ms: deliveredAt, ...(slots ? { booking_slots: slots } : {}) });
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      await env.DB.batch([
+        env.DB.prepare(`INSERT OR IGNORE INTO messages
+          (id,conversation_id,channel,external_message_id,direction,sender_type,message_type,content,metadata,processed_at)
+          SELECT ?,conversation_id,'WHATSAPP',?,'OUTBOUND','BOT','text',message,?,CURRENT_TIMESTAMP
+          FROM ai_drafts WHERE id=? AND status IN ('SENDING','APPROVED')`).bind(outboundId, waMessageId, proof, draft.id),
+        env.DB.prepare(`UPDATE ai_drafts SET status='APPROVED',decided_at=CURRENT_TIMESTAMP
+          WHERE id=? AND status='SENDING' AND EXISTS(SELECT 1 FROM messages m
+            WHERE m.conversation_id=ai_drafts.conversation_id AND m.external_message_id=? AND m.direction='OUTBOUND'
+            AND json_extract(CASE WHEN json_valid(m.metadata) THEN m.metadata ELSE '{}' END,'$.ai_draft_id')=ai_drafts.id)`).bind(draft.id, waMessageId)
+      ]);
+      const saved = await env.DB.prepare(`SELECT m.id FROM messages m JOIN ai_drafts d ON d.id=?
+        WHERE d.status='APPROVED' AND m.conversation_id=d.conversation_id AND m.external_message_id=?
+        AND json_extract(CASE WHEN json_valid(m.metadata) THEN m.metadata ELSE '{}' END,'$.ai_draft_id')=d.id`).bind(draft.id, waMessageId).first();
+      if (!saved) throw new Error('Booking delivery was not committed');
+      return;
+    } catch (error) {
+      if (attempt === 1) throw error;
+    }
+  }
+}
+
 function normalizeAutomatedContextValue(value, fallback, maxLength = 160) {
   const normalized = String(value || '')
     .replace(/[\r\n\t]+/g, ' ')
@@ -463,6 +502,38 @@ export async function onRequest({ request, env, waitUntil }) {
         });
       }
 
+      // Booking decisions are authenticated here and revalidated by the consumer.
+      const bookingMatch = String(body.callback_query?.data || '').match(/^booking_(approve|reject):([0-9a-f-]{36})$/i);
+      const nameMatch = body.message?.reply_to_message && String(body.message.text || '').match(/^\/name(?:@\w+)?(?:\s+(.*))?$/is);
+      if (bookingMatch || nameMatch) {
+        if (env.AI_PILOT_MODE !== 'true' || env.AI_BOOKING_ENABLED !== 'true' || env.AI_BOOKING_REQUESTS_ENABLED !== 'true') {
+          if (body.callback_query) await answerTelegramCallback(body.callback_query.id, 'אפשרות התורים כבויה', env, true);
+          return new Response('OK', { status: 200 });
+        }
+        const callback = body.callback_query;
+        const message = callback?.message || body.message;
+        const cardMessageId = callback ? message?.message_id : message?.reply_to_message?.message_id;
+        const threadId = message?.message_thread_id;
+        if (String(message?.chat?.id) !== String(env.TELEGRAM_CHAT_ID) || !Number.isSafeInteger(cardMessageId) || !Number.isSafeInteger(threadId)) {
+          return new Response('Forbidden', { status: 403 });
+        }
+        const booking = bookingMatch
+          ? await env.DB.prepare('SELECT r.id,r.card_message_id,r.card_status,c.phone FROM booking_requests r JOIN conversations c ON c.id=r.conversation_id WHERE r.id=?').bind(bookingMatch[2]).first()
+          : await env.DB.prepare('SELECT r.id,r.card_message_id,r.card_status,c.phone FROM booking_requests r JOIN conversations c ON c.id=r.conversation_id WHERE r.card_message_id=?').bind(cardMessageId).first();
+        if (!booking || booking.card_status !== 'SENT' || booking.card_message_id !== cardMessageId || !await matchesTelegramTopic(booking.phone, threadId, env)) {
+          if (callback) await answerTelegramCallback(callback.id, 'הכרטיס לא נמצא או עדיין לא מוכן. נסי שוב.', env, true);
+          return new Response('OK', { status: 200 });
+        }
+        await env.AI_QUEUE.send({
+          type: 'BOOKING_DECISION', requestId: booking.id,
+          action: bookingMatch ? bookingMatch[1].toLowerCase() : 'name',
+          actorId: String((callback?.from || message.from).id), chatId: String(message.chat.id), threadId, cardMessageId,
+          ...(nameMatch ? { clientName: nameMatch[1] || '', commandMessageId: message.message_id } : {})
+        }, { delaySeconds: 0 });
+        if (callback) await answerTelegramCallback(callback.id, 'הבקשה התקבלה לבדיקה', env);
+        return new Response('OK', { status: 200 });
+      }
+
       // Private admin chat is only an authenticated Queue producer.
       // D1 queries and summary delivery are owned by whatsapp-consumer.
       if (isOwnPrivateAdminChat(body.message)) {
@@ -619,6 +690,7 @@ export async function onRequest({ request, env, waitUntil }) {
           return new Response("OK", { status: 200 });
         }
 
+        const bookingEnabled = env.AI_BOOKING_ENABLED === 'true' && env.AI_BOOKING_REQUESTS_ENABLED === 'true';
         const action = match[1].toLowerCase();
         const draftId = match[2];
 
@@ -749,7 +821,7 @@ export async function onRequest({ request, env, waitUntil }) {
       attention,
       intent,
       reason,
-      identity_mode
+      identity_mode${bookingEnabled ? ", booking_metadata" : ""}
   `)
           .bind(
             draftId,
@@ -941,6 +1013,17 @@ export async function onRequest({ request, env, waitUntil }) {
         const waMessageId =
           waRes?.messages?.[0]?.id || null;
 
+        const bookingDelivery = bookingEnabled && Boolean(claimed.booking_metadata);
+        // A booking send with an uncertain outcome stays SENDING for manual review.
+        // Reset only on an explicit provider rejection; a timeout may have delivered.
+        if (!waMessageId && bookingDelivery && !waRes?.error) {
+          if (threadId) await sendTelegram('sendMessage', {
+            message_thread_id: threadId,
+            text: '⚠️ תוצאת שליחת ההצעה אינה ידועה. יש לבדוק בווטסאפ לפני ניסיון נוסף; ההצעה נעצרה לבדיקה.',
+            disable_notification: false
+          }, env);
+          return new Response('OK', { status: 200 });
+        }
         // WhatsApp clearly failed:
         // return draft to PENDING so Rinat may retry.
         if (!waMessageId) {
@@ -973,7 +1056,20 @@ export async function onRequest({ request, env, waitUntil }) {
         }
 
         // Save the bot answer only after WhatsApp confirmed it.
-        try {
+        if (bookingDelivery) {
+          try {
+            await saveBookingDelivery(claimed, waMessageId, Date.now(), env);
+          } catch {
+            console.error('BOOKING_DELIVERY_PERSIST_FAILED');
+            if (callbackMessageId) await clearPilotButtons(callbackMessageId, env);
+            if (threadId) await sendTelegram('sendMessage', {
+              message_thread_id: threadId,
+              text: '⚠️ ההצעה נשלחה בווטסאפ אך התיעוד לא נשמר. אין לשלוח שוב; נדרשת בדיקה ידנית. מזהה הודעה: ' + waMessageId,
+              disable_notification: false
+            }, env);
+            return new Response('OK', { status: 200 });
+          }
+        } else try {
           await saveAiOutbound(
             claimed.conversation_id,
             waMessageId,
@@ -1015,7 +1111,7 @@ export async function onRequest({ request, env, waitUntil }) {
             );
           }
         }
-        await env.DB.prepare(`
+        if (!bookingDelivery) await env.DB.prepare(`
     UPDATE ai_drafts
     SET status = 'APPROVED',
         decided_at = CURRENT_TIMESTAMP
