@@ -41,75 +41,7 @@ async function matchesTelegramTopic(phone, threadId, env) {
   const session = await env.SESSIONS_KV.get(phone, { type: 'json' });
   return Boolean(session?.threadId && String(session.threadId) === String(threadId));
 }
-// --- Fallback Config (למקרה שה-KV ריק) ---
-const DEFAULT_FLOW = {
-  "start": {
-    "text": "שלום! ✨\nברוכה הבאה לקליניקה. במה נוכל לעזור?",
-    "buttons": [{ "id": "human", "title": "שיחה עם נציג 🙋‍♀️" }]
-  }
-};
-
-// --- הגדרת Cache גלובלי בזיכרון ה-Worker (לשיפור ביצועים) ---
-let cachedBotFlow = null;
 const HUMAN_IDLE_MS = 3 * 60 * 60 * 1000;
-// --- Helper Functions ---
-
-async function forwardAudioToTelegram(mediaId, threadId, caption, disableNotification, env) {
-  try {
-    const mediaRes = await fetch(`https://graph.facebook.com/v18.0/${mediaId}`, {
-      headers: { "Authorization": `Bearer ${env.WHATSAPP_TOKEN}` }
-    });
-    const mediaData = await mediaRes.json();
-    if (mediaData.url) {
-      const fileRes = await fetch(mediaData.url, { headers: { "Authorization": `Bearer ${env.WHATSAPP_TOKEN}` } });
-      const fileBlob = await fileRes.blob();
-      const formData = new FormData();
-      formData.append("chat_id", env.TELEGRAM_CHAT_ID);
-      formData.append("message_thread_id", threadId);
-      formData.append("voice", fileBlob, "voice.ogg");
-      formData.append("caption", caption);
-      formData.append("disable_notification", disableNotification ? "true" : "false");
-      await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendVoice`, { method: "POST", body: formData });
-      return true;
-    }
-  } catch (e) { console.error("Audio forward error:", e); return false; }
-}
-
-async function forwardImageToTelegram(mediaId, threadId, caption, disableNotification, env, customerCaption = "") {
-  try {
-    const mediaRes = await fetch(`https://graph.facebook.com/v18.0/${mediaId}`, {
-      headers: { "Authorization": `Bearer ${env.WHATSAPP_TOKEN}` }
-    });
-    const mediaData = await mediaRes.json();
-    if (mediaData.url) {
-      const fileRes = await fetch(mediaData.url, { headers: { "Authorization": `Bearer ${env.WHATSAPP_TOKEN}` } });
-      const fileBlob = await fileRes.blob();
-      const formData = new FormData();
-      formData.append("chat_id", env.TELEGRAM_CHAT_ID);
-      formData.append("message_thread_id", threadId);
-      formData.append("photo", fileBlob, "photo.jpg");
-      const fullCaption = customerCaption ? `${caption}\n\n💬 כיתוב: ${customerCaption}` : caption;
-      // Telegram photo captions are limited to 1024 characters. Preserve long
-      // customer captions in a reply to the photo rather than dropping text.
-      const separateCaption = fullCaption.length > 1024;
-      formData.append("caption", separateCaption ? caption : fullCaption);
-      formData.append("disable_notification", disableNotification ? "true" : "false");
-      const sent = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendPhoto`, { method: "POST", body: formData });
-      const sentData = await sent.json();
-      if (!sent.ok || !sentData.ok) return false;
-      if (separateCaption && customerCaption) {
-        const textResult = await sendTelegram("sendMessage", {
-          message_thread_id: threadId,
-          text: `${caption}\n\n💬 כיתוב: ${customerCaption}`,
-          reply_parameters: { message_id: sentData.result.message_id },
-          disable_notification: disableNotification
-        }, env);
-        if (!textResult.ok) return false;
-      }
-      return true;
-    }
-  } catch (e) { return false; }
-}
 
 async function getTelegramFile(fileId, env, mimeType = "audio/ogg") {
   const res = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/getFile?file_id=${fileId}`);
@@ -154,18 +86,6 @@ async function sendTelegram(method, payload, env) {
     body: JSON.stringify({ chat_id: env.TELEGRAM_CHAT_ID, ...payload }),
   });
   return await res.json();
-}
-
-async function bumpAiGeneration(conversationId, env) {
-  const row = await env.DB.prepare(`
-    UPDATE conversations
-    SET ai_generation = ai_generation + 1,
-        updated_at = CURRENT_TIMESTAMP
-    WHERE id = ?
-    RETURNING ai_generation
-  `).bind(conversationId).first();
-
-  return Number(row?.ai_generation ?? 0);
 }
 
 async function activateHumanMode(phone, env) {
@@ -1197,8 +1117,8 @@ export async function onRequest({ request, env, waitUntil }) {
         let dbInsertSuccess = false;
         let conversationId = null;
 
-        const internalMessageId = crypto.randomUUID();
-        const messageType = msg.type;
+        let internalMessageId = crypto.randomUUID();
+        let messageType = msg.type;
 
         let content = "";
         let metadata = {};
@@ -1206,92 +1126,101 @@ export async function onRequest({ request, env, waitUntil }) {
         try {
           // 1. Early Idempotency Check
           const existingMsg = await env.DB.prepare(
-            `SELECT id FROM messages WHERE channel = 'WHATSAPP' AND external_message_id = ?`
+            `SELECT id, conversation_id, processed_at, message_type, content, metadata FROM messages WHERE channel = 'WHATSAPP' AND external_message_id = ?`
           ).bind(externalMessageId).first();
 
+          if (existingMsg?.processed_at) return new Response("OK", { status: 200 });
           if (existingMsg) {
-            console.log(`[Idempotency] Blocked duplicate external message: ${externalMessageId}`);
-            return new Response("OK", { status: 200 });
-          }
+            // A previous publish may have failed or timed out. Reuse the stored
+            // message and generation; the consumer already handles duplicate jobs.
+            internalMessageId = existingMsg.id;
+            conversationId = existingMsg.conversation_id;
+            messageType = existingMsg.message_type;
+            content = existingMsg.content || "";
+            metadata = JSON.parse(existingMsg.metadata || "{}");
+          } else {
+            // 2. Client Resolution
+            const clientRecord = await env.DB.prepare(
+              `SELECT id FROM Clients WHERE phone = ?`
+            ).bind(from).first();
 
-          // 2. Client Resolution
-          const clientRecord = await env.DB.prepare(
-            `SELECT id FROM Clients WHERE phone = ?`
-          ).bind(from).first();
+            const clientId = clientRecord ? clientRecord.id : null;
 
-          const clientId = clientRecord ? clientRecord.id : null;
+            // 3. Get or Create Conversation
+            const newConversationId = crypto.randomUUID();
 
-          // 3. Get or Create Conversation
-          const newConversationId = crypto.randomUUID();
+            const convResult = await env.DB.prepare(`
+              INSERT INTO conversations (id, phone, client_id, channel)
+              VALUES (?, ?, ?, 'WHATSAPP')
+              ON CONFLICT(channel, phone) DO UPDATE SET
+                client_id = excluded.client_id,
+                updated_at = CURRENT_TIMESTAMP
+              RETURNING id
+            `).bind(newConversationId, from, clientId).first();
 
-          const convResult = await env.DB.prepare(`
-            INSERT INTO conversations (id, phone, client_id, channel)
-            VALUES (?, ?, ?, 'WHATSAPP')
-            ON CONFLICT(channel, phone) DO UPDATE SET
-              client_id = excluded.client_id,
-              updated_at = CURRENT_TIMESTAMP
-            RETURNING id
-          `).bind(newConversationId, from, clientId).first();
+            conversationId = convResult?.id || newConversationId;
 
-          conversationId = convResult?.id || newConversationId;
+            // 4. Content & Metadata Extraction
+            if (messageType === "text") {
+              content = msg.text?.body || "";
 
-          // 4. Content & Metadata Extraction
-          if (messageType === "text") {
-            content = msg.text?.body || "";
+            } else if (messageType === "interactive") {
+              content = msg.interactive?.button_reply?.title || "";
+              metadata.button_id = msg.interactive?.button_reply?.id;
 
-          } else if (messageType === "interactive") {
-            content = msg.interactive?.button_reply?.title || "";
-            metadata.button_id = msg.interactive?.button_reply?.id;
+            } else if (messageType === "image" || messageType === "video") {
+              const media = msg[messageType];
+              content = media?.caption || "";
+              metadata.media_id = media?.id;
 
-          } else if (messageType === "image") {
-            content = msg.image?.caption || "";
-            metadata.media_id = msg.image?.id;
+            } else if (messageType === "audio" || messageType === "voice") {
+              metadata.media_id = msg.audio?.id || msg.voice?.id;
+            }
 
-          } else if (messageType === "audio" || messageType === "voice") {
-            metadata.media_id = msg.audio?.id || msg.voice?.id;
-          }
+            if (msg.referral) {
+              metadata.referral = msg.referral;
+            }
 
-          if (msg.referral) {
-            metadata.referral = msg.referral;
-          }
-
-          // 5. Insert Message
-          const insertResult = await env.DB.prepare(`
-            INSERT INTO messages (
-              id,
-              conversation_id,
-              channel,
-              external_message_id,
-              direction,
-              sender_type,
-              message_type,
+            // 5. Insert Message
+            const insertResult = await env.DB.prepare(`
+              INSERT INTO messages (
+                id,
+                conversation_id,
+                channel,
+                external_message_id,
+                direction,
+                sender_type,
+                message_type,
+                content,
+                metadata
+              )
+              VALUES (?, ?, 'WHATSAPP', ?, 'INBOUND', 'CLIENT', ?, ?, ?)
+              ON CONFLICT(channel, external_message_id) DO NOTHING
+            `).bind(
+              internalMessageId,
+              conversationId,
+              externalMessageId,
+              messageType,
               content,
-              metadata
-            )
-            VALUES (?, ?, 'WHATSAPP', ?, 'INBOUND', 'CLIENT', ?, ?, ?)
-            ON CONFLICT(channel, external_message_id) DO NOTHING
-          `).bind(
-            internalMessageId,
-            conversationId,
-            externalMessageId,
-            messageType,
-            content,
-            JSON.stringify(metadata)
-          ).run();
+              JSON.stringify(metadata)
+            ).run();
 
-          if (insertResult.meta.changes === 0) {
-            console.log(`[Idempotency] Duplicate blocked at INSERT: ${externalMessageId}`);
-            return new Response("OK", { status: 200 });
+            if (insertResult.meta.changes === 0) {
+              // Concurrent inserts use the same external ID. Ask Meta to retry so
+              // this request can load the winning row instead of dropping it.
+              return new Response("Retry message persistence", { status: 503 });
+            }
+
           }
-
           dbInsertSuccess = true;
 
         } catch (dbError) {
           console.error("D1 Persistence Error:", dbError);
+          return new Response("Message persistence unavailable", { status: 503 });
         }
 
         // 6. Queue publish + AI debounce generation
-        if (dbInsertSuccess && env.USE_QUEUE === "true") {
+        if (dbInsertSuccess) {
           try {
             const aiTestNumbers = (
               env.AI_TEST_NUMBERS ||
@@ -1345,13 +1274,30 @@ export async function onRequest({ request, env, waitUntil }) {
                 messageType === "interactive"
               );
 
-            let aiGeneration = null;
+            let aiGeneration = metadata.queue_ai_generation ?? null;
 
-            if (shouldInvalidateAi && conversationId) {
-              aiGeneration = await bumpAiGeneration(
-                conversationId,
-                env
-              );
+            if (shouldInvalidateAi && conversationId && aiGeneration == null) {
+              // Commit the generation and its message marker together. Retries
+              // and concurrent duplicate webhooks must reuse that same marker.
+              const results = await env.DB.batch([
+                env.DB.prepare(`
+                  UPDATE conversations SET ai_generation = ai_generation + 1,
+                    updated_at = CURRENT_TIMESTAMP
+                  WHERE id = ? AND EXISTS (
+                    SELECT 1 FROM messages WHERE id = ?
+                      AND json_extract(metadata, '$.queue_ai_generation') IS NULL
+                  )
+                `).bind(conversationId, internalMessageId),
+                env.DB.prepare(`
+                  UPDATE messages SET metadata = json_set(COALESCE(metadata, '{}'),
+                    '$.queue_ai_generation', (SELECT ai_generation FROM conversations WHERE id = ?))
+                  WHERE id = ? AND json_extract(metadata, '$.queue_ai_generation') IS NULL
+                `).bind(conversationId, internalMessageId),
+                env.DB.prepare("SELECT json_extract(metadata, '$.queue_ai_generation') AS generation FROM messages WHERE id = ?")
+                  .bind(internalMessageId)
+              ]);
+              aiGeneration = results[2].results[0]?.generation;
+              if (aiGeneration == null) throw new Error("Missing persisted queue generation");
             }
 
             const queueBody = {
@@ -1383,385 +1329,10 @@ export async function onRequest({ request, env, waitUntil }) {
 
           } catch (queueError) {
             console.error("Queue Send Error:", queueError);
-            // Queue failure falls through to the legacy flow so the clinic still receives the message.
+            return new Response("Message queue unavailable", { status: 503 });
           }
         }
 
-        // =======================================================
-        // 🌟 EXISTING FLOW: Telegram & SESSIONS_KV (Legacy Fallback) 🌟
-        // =======================================================
-
-        let session =
-          await env.SESSIONS_KV.get(
-            from,
-            { type: "json" }
-          ) || {
-            threadId: null,
-            humanMode: false,
-            name: rawName
-          };
-
-        const createNewTopic = async () => {
-          const topicRes = await sendTelegram(
-            "createForumTopic",
-            {
-              name:
-                `🆕 ${rawName} (${from.slice(-4)})`
-            },
-            env
-          );
-
-          if (topicRes?.ok) {
-            session.threadId =
-              topicRes.result.message_thread_id;
-
-            session.isFirstTime = true;
-
-            const tasks = Promise.all([
-              env.SESSIONS_KV.put(
-                from,
-                JSON.stringify(session)
-              ),
-
-              env.SESSIONS_KV.put(
-                `name_${session.threadId}`,
-                rawName
-              )
-            ]);
-
-            if (waitUntil) {
-              waitUntil(tasks);
-            } else {
-              await tasks;
-            }
-
-            return true;
-          }
-
-          return false;
-        };
-
-        if (!session.threadId) {
-          await createNewTopic();
-        }
-
-        if (session.threadId) {
-          const isButton =
-            msg.type === "interactive";
-
-          const isImage =
-            msg.type === "image";
-
-          const isAudio =
-            msg.type === "audio" ||
-            msg.type === "voice";
-
-          const buttonId =
-            isButton
-              ? msg.interactive.button_reply.id
-              : null;
-
-          const customerText =
-            isButton
-              ? msg.interactive.button_reply.title
-              : (msg.text?.body || "");
-
-          const requestedStart =
-            ["תפריט", "menu", "התחלה"].some(
-              key =>
-                customerText
-                  .toLowerCase()
-                  .includes(key)
-            );
-
-          const nextStepId =
-            buttonId ||
-            (
-              session.isFirstTime ||
-                requestedStart
-                ? "start"
-                : null
-            );
-
-          if (requestedStart) {
-            session.humanMode = false;
-            delete session.humanLastActivityAt;
-            await env.DB.prepare(`
-              UPDATE conversations
-              SET human_until_ms = NULL,
-                  updated_at = CURRENT_TIMESTAMP
-              WHERE channel = 'WHATSAPP' AND phone = ?
-            `).bind(from).run();
-            const task =
-              env.SESSIONS_KV.put(
-                from,
-                JSON.stringify(session)
-              );
-
-            if (waitUntil) {
-              waitUntil(task);
-            } else {
-              await task;
-            }
-          }
-
-          const currentName =
-            session.name ||
-            rawName;
-
-          const isUrgent =
-            customerText.includes("דחוף");
-
-          const disableNotification =
-            !(
-              buttonId === "human" ||
-              buttonId === "main_booking" ||
-              isUrgent ||
-              session.humanMode
-            );
-
-          // --- זיהוי הגעה מקמפיין ממומן (Click-to-WhatsApp) ---
-          let adInfo = "";
-
-          if (msg.referral) {
-            const adHeadline =
-              msg.referral.headline
-                ? `\n🏷️ כותרת: ${msg.referral.headline}`
-                : "";
-
-            const adSource =
-              msg.referral.source_type
-                ? ` (מקור: ${msg.referral.source_type})`
-                : "";
-
-            const adId =
-              msg.referral.source_id
-                ? `\n🆔 מזהה: ${msg.referral.source_id}`
-                : "";
-
-            adInfo =
-              `\n\n📢 הגיעה מקמפיין ממומן!${adSource}${adHeadline}${adId}`;
-          }
-
-          const backgroundTasks = [];
-
-          if (isAudio) {
-            backgroundTasks.push(
-              forwardAudioToTelegram(
-                msg.audio?.id || msg.voice?.id,
-                session.threadId,
-                `👤 הקלטה מאת: ${currentName}${adInfo}`,
-                disableNotification,
-                env
-              )
-            );
-
-          } else if (isImage) {
-            backgroundTasks.push(
-              forwardImageToTelegram(
-                msg.image.id,
-                session.threadId,
-                `👤 מאת: ${currentName}\n🖼️ תמונה\n\nPhone: ${from}${adInfo}`,
-                disableNotification,
-                env,
-                msg.image.caption || ""
-              )
-            );
-
-          } else {
-            backgroundTasks.push(
-              sendTelegram(
-                "sendMessage",
-                {
-                  message_thread_id:
-                    session.threadId,
-
-                  text:
-                    `👤 מאת: ${currentName}\n` +
-                    `💬 הודעה: ${customerText}\n\n` +
-                    `Phone: ${from}${adInfo}`,
-
-                  disable_notification:
-                    disableNotification
-                },
-                env
-              )
-            );
-          }
-
-          let BOT_FLOW;
-
-          if (!cachedBotFlow) {
-            try {
-              const kvConfig =
-                await env.SESSIONS_KV.get(
-                  "BOT_CONFIG",
-                  { type: "json" }
-                );
-
-              cachedBotFlow =
-                kvConfig ||
-                DEFAULT_FLOW;
-
-            } catch (e) {
-              cachedBotFlow =
-                DEFAULT_FLOW;
-            }
-          }
-
-          BOT_FLOW =
-            cachedBotFlow;
-
-          let justActivatedHuman =
-            false;
-
-          if (buttonId === "human") {
-            session.humanMode =
-              true;
-            session.humanLastActivityAt = Date.now();
-            await env.DB.prepare(`
-  UPDATE conversations
-  SET human_until_ms = ?,
-      updated_at = CURRENT_TIMESTAMP
-  WHERE channel = 'WHATSAPP' AND phone = ?
-`).bind(
-              Date.now() + HUMAN_IDLE_MS,
-              from
-            ).run();
-            justActivatedHuman =
-              true;
-
-            backgroundTasks.push(
-              env.SESSIONS_KV.put(
-                from,
-                JSON.stringify(session)
-              ),
-
-              sendTelegram(
-                "editForumTopic",
-                {
-                  message_thread_id:
-                    session.threadId,
-
-                  name:
-                    `🔴 ${currentName} (${from.slice(-4)})`
-                },
-                env
-              )
-            );
-
-          } else if (
-            buttonId === "main_booking"
-          ) {
-            backgroundTasks.push(
-              sendTelegram(
-                "editForumTopic",
-                {
-                  message_thread_id:
-                    session.threadId,
-
-                  name:
-                    `🔴 ${currentName} (${from.slice(-4)})`
-                },
-                env
-              )
-            );
-          }
-
-          if (
-            (
-              !session.humanMode ||
-              justActivatedHuman
-            ) &&
-            nextStepId &&
-            BOT_FLOW[nextStepId]
-          ) {
-            const step =
-              BOT_FLOW[nextStepId];
-
-            let buttons = [
-              ...(step.buttons || [])
-            ];
-
-            const hasStartButton =
-              buttons.some(
-                button =>
-                  button.id === "start"
-              );
-
-            if (
-              nextStepId !== "start" &&
-              buttons.length < 3 &&
-              !hasStartButton
-            ) {
-              buttons.push({
-                id: "start",
-                title: "חזרה לתפריט 🏠"
-              });
-            }
-
-            await sendWhatsApp(
-              from,
-              {
-                type: "interactive",
-
-                interactive: {
-                  type: "button",
-
-                  header: {
-                    type: "text",
-                    text:
-                      step.header ||
-                      "ד״ר רינת - אסתטיקה"
-                  },
-
-                  body: {
-                    text:
-                      step.text
-                  },
-
-                  action: {
-                    buttons:
-                      buttons
-                        .slice(0, 3)
-                        .map(
-                          button => ({
-                            type: "reply",
-                            reply: button
-                          })
-                        )
-                  }
-                }
-              },
-              env
-            );
-
-            if (session.isFirstTime) {
-              session.isFirstTime =
-                false;
-
-              backgroundTasks.push(
-                env.SESSIONS_KV.put(
-                  from,
-                  JSON.stringify(session)
-                )
-              );
-            }
-          }
-
-          if (waitUntil) {
-            waitUntil(
-              Promise.all(
-                backgroundTasks
-              )
-            );
-
-          } else {
-            await Promise.all(
-              backgroundTasks
-            );
-          }
-        }
       }
 
       // 3. רינת עונה מטלגרם
@@ -1799,6 +1370,8 @@ export async function onRequest({ request, env, waitUntil }) {
                 !largest || candidate.width * candidate.height > largest.width * largest.height
                   ? candidate : largest, null)
             : null;
+
+          const video = body.message.video || body.message.video_note || null;
 
           const textContent =
             body.message.text?.trim() ||
@@ -2066,6 +1639,27 @@ SET human_until_ms = NULL,
                   id: mediaId,
                   ...(outboundContent ? { caption: outboundContent } : {})
                 }
+              }, env);
+            }
+
+            else if (video) {
+              outboundType = "video";
+              outboundContent = body.message.caption || null;
+              const mimeType = video.mime_type || "video/mp4";
+              if (!["video/mp4", "video/3gpp"].includes(mimeType))
+                throw new Error("פורמט הסרטון אינו נתמך בווטסאפ. יש לשלוח סרטון MP4 או 3GP.");
+              const maxVideoBytes = 16 * 1024 * 1024;
+              if (video.file_size > maxVideoBytes)
+                throw new Error("הסרטון גדול מדי לווטסאפ. יש לשלוח סרטון עד 16 MB.");
+              const videoBlob = await getTelegramFile(video.file_id, env, mimeType);
+              if (videoBlob.size > maxVideoBytes)
+                throw new Error("הסרטון גדול מדי לווטסאפ. יש לשלוח סרטון עד 16 MB.");
+              const filename = mimeType === "video/3gpp" ? "video.3gp" : "video.mp4";
+              const mediaId = await uploadToWhatsApp(videoBlob, env, filename);
+              if (!mediaId) throw new Error("העלאת הסרטון לווטסאפ נכשלה");
+              waRes = await sendWhatsApp(customerPhone, {
+                type: "video",
+                video: { id: mediaId, ...(outboundContent ? { caption: outboundContent } : {}) }
               }, env);
             }
 
