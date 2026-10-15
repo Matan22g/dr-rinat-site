@@ -422,6 +422,37 @@ export async function onRequest({ request, env, waitUntil }) {
         });
       }
 
+      // Follow-ups have their own cards; they never consume or approve an AI draft.
+      const followUpMatch = String(body.callback_query?.data || '').match(/^followup_(approve|reject):([0-9a-f-]{36})$/i);
+      if (followUpMatch) {
+        const callback = body.callback_query;
+        if (env.MENU_FOLLOW_UP_ENABLED !== 'true' || env.AI_PILOT_MODE !== 'true') {
+          await answerTelegramCallback(callback.id, 'הצעות ההמשך כבויות', env, true);
+          return new Response('OK', { status: 200 });
+        }
+        const message = callback.message;
+        const cardMessageId = message?.message_id;
+        const threadId = message?.message_thread_id;
+        if (String(message?.chat?.id) !== String(env.TELEGRAM_CHAT_ID) || !Number.isSafeInteger(cardMessageId) || !Number.isSafeInteger(threadId)) {
+          return new Response('Forbidden', { status: 403 });
+        }
+        try {
+          const followUp = await env.DB.prepare('SELECT f.id,f.card_message_id,f.thread_id,f.status,c.phone FROM follow_ups f JOIN conversations c ON c.id=f.conversation_id WHERE f.id=?').bind(followUpMatch[2]).first();
+          if (!followUp || followUp.status !== 'PENDING' || followUp.card_message_id !== cardMessageId || followUp.thread_id !== threadId || !await matchesTelegramTopic(followUp.phone, threadId, env)) {
+            await answerTelegramCallback(callback.id, 'הכרטיס כבר טופל או אינו זמין', env, true);
+            return new Response('OK', { status: 200 });
+          }
+          await env.AI_QUEUE.send({
+            type: 'FOLLOW_UP_DECISION', followUpId: followUp.id, action: followUpMatch[1].toLowerCase(),
+            actorId: String(callback.from.id), chatId: String(message.chat.id), threadId, cardMessageId
+          }, { delaySeconds: 0 });
+          await answerTelegramCallback(callback.id, 'הבקשה התקבלה לבדיקה', env);
+          return new Response('OK', { status: 200 });
+        } catch {
+          console.error('FOLLOW_UP_CALLBACK_QUEUE_FAILED');
+          return new Response('Retry', { status: 503 });
+        }
+      }
       // Booking decisions are authenticated here and revalidated by the consumer.
       const bookingMatch = String(body.callback_query?.data || '').match(/^booking_(approve|reject):([0-9a-f-]{36})$/i);
       const nameMatch = body.message?.reply_to_message && String(body.message.text || '').match(/^\/name(?:@\w+)?(?:\s+(.*))?$/is);
@@ -1181,6 +1212,12 @@ export async function onRequest({ request, env, waitUntil }) {
               metadata.referral = msg.referral;
             }
 
+            // Preserve Meta's event time for service-window checks; webhook retries
+            // must not make an old customer message appear new.
+            const customerTimestampMs = Number(msg.timestamp) * 1000;
+            if (Number.isSafeInteger(customerTimestampMs) && customerTimestampMs > 0 && customerTimestampMs <= Date.now()) {
+              metadata.whatsapp_timestamp_ms = customerTimestampMs;
+            }
             // 5. Insert Message
             const insertResult = await env.DB.prepare(`
               INSERT INTO messages (
