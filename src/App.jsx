@@ -52,36 +52,60 @@ const TREATMENTS = [
   {
     title: 'פיסול פנים ועיצוב',
     icon: FaceIcon,
+    tag: 'הדגשת תווים',
+    duration: '12–18 חודשים',
+    material: 'Saypha (חומצה היאלורונית)',
+    areas: 'לחיים, קו לסת, סנטר, רקות',
     desc: 'טיפול שמטרתו להדגיש קווי מתאר, לשפר פרופורציות ולהרים אזורים שצנחו עם הזמן.',
     details: 'טיפול שמטרתו להדגיש קווי מתאר, לשפר פרופורציות ולהרים אזורים שצנחו עם הזמן. מתאים לעצמות לחיים, סנטר, קו לסת, רקות ולעיתים גם קווי קמט עמוקים.\nהמטרה היא יצירת מראה מורם, הרמוני וטבעי, ללא נפח מיותר.\nאני משתמשת בחומצות היאלורוניות של Saypha, עם חומרים ייעודיים לפיסול פנים.\nמדובר בחומר מרים וחזק, שנותן תמיכה טובה לרקמה.\nהחומר מרים אזורים שצריך, מבלי ליצור נפיחויות מיותרות. הטיפול מותאם אישית למבנה הפנים.\nלפי מחקרים, משך ההחזקה לרוב בין 12–18 חודשים ואף יותר.\nהתוצאה - מראה טבעי, מורם ורענן לאורך זמן.'
   },
   {
     title: 'מילוי ועיצוב שפתיים',
     icon: GiLips,
+    tag: 'נפח וסימטריה',
+    duration: '9–12 חודשים',
+    material: 'Saypha מאושר משרד הבריאות',
+    areas: 'שפתיים וקמטוטים סביב הפה',
     desc: 'טיפול עדין שמטרתו להדגיש את צורת השפה הטבעית, לשפר סימטריה ולהוסיף נפח בצורה הרמונית.',
     details: 'טיפול עדין שמטרתו להדגיש את צורת השפה הטבעית, לשפר סימטריה ולהוסיף נפח בצורה הרמונית. מתאים לשפתיים דקות, א-סימטריות או לשיפור קווי מתאר.\nהטיפול מאפשר גם ריכוך קמטים עדינים סביב הפה. מבוצע בהתאמה אישית למבנה הפנים ולרצון המטופלת. ללא מראה מוגזם, דגש על תוצאה טבעית.\nאני עובדת עם חומצות היאלורוניות איכותיות של Saypha. חומרים אירופאיים, מאושרי משרד הבריאות.\nפרופיל בטיחות גבוה ומרקם רך.\nלפי מחקרים, התוצאה מחזיקה לרוב בין 9–12 חודשים.\nתוצאות יפות, טבעיות ועמידות לאורך זמן.'
   },
   {
     title: 'בוטוקס (דיספורט)',
     icon: Syringe,
+    tag: 'החלקת קמטים',
+    duration: '3–5 חודשים',
+    material: 'Dysport (מאושר משרד הבריאות)',
+    areas: 'מצח, בין הגבות, צידי העיניים',
     desc: 'טיפול להפחתת קמטי הבעה ולקבלת מראה רענן וחלק יותר.',
     details: 'טיפול להפחתת קמטי הבעה ולקבלת מראה רענן וחלק יותר.\nמתאים למצח, בין הגבות, צידי העיניים ואזורים נוספים.\nהטיפול מרפה זמנית את פעילות השריר, וכך מונע העמקה של קמטים קיימים והיווצרות קמטים חדשים.\nאני משתמשת ב Dysport. טוקסין סטנדרטי ואיכותי, מאושר משרד הבריאות.\nתחילת השפעה לרוב לאחר 3–7 ימים.\nתוצאה מלאה לאחר כשבועיים.\nמשך ההשפעה לרוב בין 3–5 חודשים.\nהתאמה אישית של אזורים ומינון לפי מבנה הפנים והצורך.'
   },
   {
     title: 'פולינוקלאוטידים (טיפול סלמון)',
     icon: Dna,
+    tag: 'שיקום תאי',
+    duration: '6–12 חודשים',
+    material: 'פולינוקלאוטידים ביולוגיים',
+    areas: 'מתחת לעיניים ועור הפנים',
     desc: 'טיפול ביולוגי שמטרתו לשקם ולשפר את איכות העור ברמה התאית, בדגש על אזור העיניים.',
     details: 'טיפול ביולוגי שמטרתו לשקם ולשפר את איכות העור ברמה התאית.\nמתאים במיוחד לאזורים בהם העור נהיה דק עם הזמן, בדגש על אזור מתחת לעיניים.\nניתן לבצע גם בשאר אזורי הפנים, אך הדגש העיקרי הוא מתחת לעיניים, שם העור מתייבש ונהיה דק מהר יותר.\nהטיפול מעודד שיקום, אלסטיות ויצירת קולגן. מבוסס על סדרה של שלושה טיפולים.\nלפי מחקרים, האפקט מחזיק לרוב בין 6–12 חודשים לאחר השלמת הסדרה.\nהמטרה - עור חזק יותר, עבה יותר ואיכותי יותר.'
   },
   {
     title: 'מילוי שקעי עיניים',
     icon: Eye,
+    tag: 'מראה ערני',
+    duration: '12–18 חודשים',
+    material: 'Redensity 2 ייעודי לעיניים',
+    areas: 'שקעים וכהויות מתחת לעיניים',
     desc: 'טיפול ייעודי לשיפור שקעים, כהויות ומראה עייף באזור העדין שמתחת לעיניים.',
     details: 'טיפול שמטרתו לשפר שקעים, כהויות, מראה עייף ומרקם עור באזור שמתחת לעיניים.\nמדובר באזור עדין במיוחד, עם עור דק, כלי דם רבים ורקמה רגישה. בגלל הרגישות, רופאים רבים נמנעים מלטפל באזור זה.\nאני משתמשת ב-Redensity 2, חומר ייעודי לאזור מתחת לעיניים שנחשב לאחד הטובים והבטוחים ביותר, עם פרופיל סיבוכים נמוך במיוחד.\nהחומר נבחר במטרה להפחית סיכונים ולתת תוצאה טבעית ובטוחה.\nמתאים בעיקר לשקעים ולמראה עייף (לא מתאים לעודפי עור משמעותיים או שקיות שומן).\nלפי מחקרים, התוצאה מחזיקה לרוב בין 12–18 חודשים.\nהמטרה - מראה רענן, חיוני וטבעי, ללא נפח מיותר.'
   },
   {
     title: 'סקין בוסטר',
     icon: Droplets,
+    tag: 'זוהר ולחות',
+    duration: '6–12 חודשים',
+    material: 'חומצה היאלורונית להזנה עמוקה',
+    areas: 'פנים, צוואר ואזורים נוספים',
     desc: 'טיפול להחדרת לחות עמוקה, שיפור מרקם העור והענקת זוהר וגמישות.',
     details: 'טיפול שמטרתו להחדיר לחות עמוקה לעור ולשפר את איכות העור מבפנים.\nהטיפול משפר מרקם, גמישות, זוהר ותחושת רכות בעור. מתאים לעור יבש, עייף או חסר חיוניות.\nניתן לבצע בפנים, בצוואר ובאזורים נוספים לפי הצורך.\nהטיפול מבוסס על סדרה של שלושה טיפולים בהפרשים קבועים, כשהמטרה היא בנייה הדרגתית של איכות העור.\nלפי מחקרים, האפקט מחזיק לרוב בין 6–12 חודשים לאחר השלמת הסדרה.\nהתוצאה - עור רווי בלחות, חיוני ובריא יותר.'
   }
@@ -460,28 +484,51 @@ const App = () => {
       </section>
 
       {/* --- Treatments Grid --- */}
-      <section id="treatments" className="py-28 bg-white scroll-mt-20">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="text-center mb-20">
-            <h2 className="font-serif text-4xl md:text-6xl font-bold text-[#2E2A35] mb-6">הטיפולים שלי</h2>
-            <div className="w-24 h-1 bg-[#9E8FB2] mx-auto rounded-full"></div>
-            <p className="mt-8 text-xl text-gray-500 max-w-2xl mx-auto">מגוון פתרונות אסתטיים מתקדמים המותאמים אישית למבנה הפנים ולצרכים שלך.</p>
+      <section id="treatments" className="py-16 md:py-28 bg-white scroll-mt-20">
+        <div className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8">
+          <div className="text-center mb-10 md:mb-20">
+            <span className="text-xs md:text-sm font-bold tracking-[0.2em] text-[#9E8FB2] uppercase block mb-2">התאמה אישית ומדויקת</span>
+            <h2 className="font-serif text-3xl sm:text-4xl md:text-6xl font-bold text-[#2E2A35] mb-4 md:mb-6">הטיפולים שלי</h2>
+            <div className="w-16 md:w-24 h-1 bg-[#9E8FB2] mx-auto rounded-full"></div>
+            <p className="mt-4 md:mt-8 text-base md:text-xl text-gray-500 max-w-2xl mx-auto px-2">מגוון פתרונות אסתטיים מתקדמים המותאמים אישית למבנה הפנים ולצרכים שלך.</p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-10">
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-6 md:gap-10">
             {TREATMENTS.map((t, i) => (
               <motion.div
                 key={i}
-                whileHover={{ y: -12 }}
+                whileHover={{ y: -8 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => setSelectedTreatment(t)}
-                className="group p-10 bg-[#FDFBFE] rounded-[40px] border border-[#F3F0F7] shadow-sm hover:shadow-2xl transition-all duration-500 text-center cursor-pointer"
+                className="group p-4 sm:p-6 md:p-9 bg-[#FDFBFE] rounded-3xl md:rounded-[40px] border border-[#F3F0F7] shadow-sm hover:shadow-2xl hover:border-[#9E8FB2]/30 transition-all duration-500 text-right cursor-pointer flex flex-col justify-between relative overflow-hidden"
               >
-                <div className="w-20 h-20 bg-[#F3F0F7] rounded-3xl flex items-center justify-center text-[#9E8FB2] mx-auto mb-8 group-hover:bg-[#9E8FB2] group-hover:text-white transition-colors duration-500">
-                  <t.icon size={36} />
+                <div>
+                  <div className="flex items-center justify-between gap-2 mb-3.5 md:mb-6">
+                    <div className="w-11 h-11 sm:w-14 sm:h-14 md:w-16 md:h-16 bg-[#F3F0F7] rounded-2xl md:rounded-3xl flex items-center justify-center text-[#9E8FB2] group-hover:bg-[#9E8FB2] group-hover:text-white transition-colors duration-500 shrink-0">
+                      <t.icon size={24} className="md:scale-125 transition-transform" />
+                    </div>
+                    <span className="text-[11px] sm:text-xs md:text-sm font-bold text-[#9E8FB2] bg-white border border-[#F3F0F7] px-2.5 py-1 rounded-full truncate shadow-2xs">
+                      {t.tag}
+                    </span>
+                  </div>
+
+                  <h3 className="font-serif text-lg sm:text-2xl md:text-3xl font-bold mb-2 md:mb-4 text-[#2E2A35] leading-snug group-hover:text-[#9E8FB2] transition-colors">
+                    {t.title}
+                  </h3>
+                  <p className="text-gray-600 text-xs sm:text-sm md:text-lg leading-relaxed line-clamp-3 md:line-clamp-none mb-4 md:mb-8">
+                    {t.desc}
+                  </p>
                 </div>
-                <h3 className="font-serif text-3xl font-bold mb-6 text-[#2E2A35]">{t.title}</h3>
-                <p className="text-gray-600 text-lg leading-relaxed mb-8">{t.desc}</p>
-                <span className="text-[#9E8FB2] font-bold text-lg group-hover:underline underline-offset-8 decoration-2">קראי עוד ←</span>
+
+                <div className="flex items-center justify-between pt-3 md:pt-5 border-t border-[#F3F0F7] text-xs sm:text-sm md:text-base mt-auto">
+                  <span className="text-gray-400 flex items-center gap-1 font-medium">
+                    <Clock size={14} className="text-[#9E8FB2] shrink-0" />
+                    <span className="truncate">{t.duration}</span>
+                  </span>
+                  <span className="text-[#9E8FB2] font-bold group-hover:underline underline-offset-4 decoration-2 shrink-0">
+                    פרטים ←
+                  </span>
+                </div>
               </motion.div>
             ))}
           </div>
@@ -492,39 +539,85 @@ const App = () => {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="fixed inset-0 z-[60] flex items-center justify-center px-4 bg-black/60 backdrop-blur-sm"
+                className="fixed inset-0 z-[60] flex items-end md:items-center justify-center md:px-4 bg-[#2E2A35]/60 backdrop-blur-sm"
                 onClick={() => setSelectedTreatment(null)}
               >
                 <motion.div
-                  initial={{ scale: 0.9, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  exit={{ scale: 0.9, opacity: 0 }}
+                  initial={{ y: 80, opacity: 0, scale: 0.98 }}
+                  animate={{ y: 0, opacity: 1, scale: 1 }}
+                  exit={{ y: 80, opacity: 0, scale: 0.98 }}
+                  transition={{ type: 'spring', damping: 26, stiffness: 300 }}
                   onClick={(e) => e.stopPropagation()}
-                  className="bg-white rounded-[30px] p-8 md:p-12 max-w-2xl w-full relative shadow-2xl text-center"
+                  className="bg-white rounded-t-[32px] md:rounded-[36px] p-6 sm:p-8 md:p-10 max-w-2xl w-full max-h-[88vh] flex flex-col relative shadow-2xl text-right border-t border-[#F3F0F7]"
                 >
-                  <button
-                    onClick={() => setSelectedTreatment(null)}
-                    className="absolute top-6 left-6 text-gray-400 hover:text-gray-600 transition-colors"
-                  >
-                    <X size={32} />
-                  </button>
-
-                  <div className="w-20 h-20 bg-[#F3F0F7] rounded-3xl flex items-center justify-center text-[#9E8FB2] mx-auto mb-6">
-                    <selectedTreatment.icon size={40} />
+                  {/* Top Bar / Mobile Handle */}
+                  <div className="flex items-center justify-between mb-4 shrink-0">
+                    <span className="text-xs md:text-sm font-bold bg-[#F3F0F7] text-[#9E8FB2] px-3.5 py-1 rounded-full">
+                      {selectedTreatment.tag}
+                    </span>
+                    <div className="w-12 h-1.5 bg-gray-200 rounded-full md:hidden" />
+                    <button
+                      onClick={() => setSelectedTreatment(null)}
+                      className="w-9 h-9 rounded-full bg-[#F3F0F7] text-[#2E2A35] hover:bg-[#9E8FB2] hover:text-white flex items-center justify-center transition-colors"
+                      aria-label="סגור חלונית"
+                    >
+                      <X size={20} />
+                    </button>
                   </div>
-                  <h3 className="font-serif text-3xl md:text-4xl font-bold text-[#2E2A35] mb-6">{selectedTreatment.title}</h3>
-                  <p className="text-gray-600 text-lg leading-relaxed mb-10">{selectedTreatment.details}</p>
 
-                  <button
-                    onClick={() => {
-                      const message = `היי ד״ר רינת, ראיתי באתר את הטיפול ${selectedTreatment.title} ואשמח לקבל פרטים נוספים.`;
-                      window.open(`https://wa.me/972559396093?text=${encodeURIComponent(message)}`, '_blank');
-                    }}
-                    className="bg-[#25D366] text-white px-8 py-4 rounded-full font-bold text-xl hover:bg-[#1EBE57] transition-all shadow-lg hover:shadow-xl active:scale-95 flex items-center justify-center gap-3 mx-auto w-full md:w-auto"
-                  >
-                    <WhatsappIcon size={24} />
-                    אני מתעניינת בטיפול זה
-                  </button>
+                  {/* Scrollable Content */}
+                  <div className="overflow-y-auto flex-1 pl-1 space-y-5">
+                    <div className="flex items-center gap-4">
+                      <div className="w-14 h-14 md:w-16 md:h-16 bg-[#F3F0F7] rounded-2xl flex items-center justify-center text-[#9E8FB2] shrink-0">
+                        <selectedTreatment.icon size={32} />
+                      </div>
+                      <div>
+                        <h3 className="font-serif text-2xl md:text-4xl font-bold text-[#2E2A35] leading-tight">
+                          {selectedTreatment.title}
+                        </h3>
+                        <p className="text-xs md:text-sm font-semibold text-[#9E8FB2] mt-1 flex items-center gap-1.5">
+                          <Clock size={14} />
+                          משך תוצאה ממוצע: {selectedTreatment.duration}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Quick Info Cards */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="bg-[#FDFBFE] border border-[#F3F0F7] rounded-2xl p-3.5">
+                        <span className="block text-xs text-gray-400 mb-0.5">חומר פעיל</span>
+                        <span className="text-xs sm:text-sm md:text-base font-bold text-[#2E2A35]">{selectedTreatment.material}</span>
+                      </div>
+                      <div className="bg-[#FDFBFE] border border-[#F3F0F7] rounded-2xl p-3.5">
+                        <span className="block text-xs text-gray-400 mb-0.5">אזורי טיפול נפוצים</span>
+                        <span className="text-xs sm:text-sm md:text-base font-bold text-[#2E2A35]">{selectedTreatment.areas}</span>
+                      </div>
+                    </div>
+
+                    {/* Structured Bullet List */}
+                    <ul className="space-y-2.5 text-gray-600 text-sm sm:text-base md:text-lg leading-relaxed pr-1">
+                      {selectedTreatment.details.split('\n').map((line, idx) => (
+                        <li key={idx} className="flex items-start gap-2.5">
+                          <span className="text-[#9E8FB2] font-bold mt-1 shrink-0">•</span>
+                          <span>{line}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {/* Sticky Bottom CTA */}
+                  <div className="pt-4 mt-4 border-t border-[#F3F0F7] shrink-0">
+                    <button
+                      onClick={() => {
+                        const message = `היי ד״ר רינת, ראיתי באתר את הטיפול ${selectedTreatment.title} ואשמח לקבל פרטים נוספים.`;
+                        window.open(`https://wa.me/972559396093?text=${encodeURIComponent(message)}`, '_blank');
+                      }}
+                      className="bg-[#25D366] text-white px-8 py-4 rounded-full font-bold text-base md:text-xl hover:bg-[#1EBE57] transition-all shadow-lg hover:shadow-xl active:scale-95 flex items-center justify-center gap-3 w-full"
+                    >
+                      <WhatsappIcon size={22} />
+                      אני מתעניינת בטיפול זה
+                    </button>
+                  </div>
                 </motion.div>
               </motion.div>
             )}
