@@ -54,7 +54,6 @@ export const ImageComparison = ({
     
     const handleGlobalTouchMove = (e) => { 
       if (isResizing) {
-        // e.preventDefault(); // Optional: uncomment if vertical scroll interferes
         handleMove(e.touches[0].clientX); 
       }
     };
@@ -79,7 +78,6 @@ export const ImageComparison = ({
       className={`relative w-full rounded-2xl overflow-hidden select-none shadow-lg border border-[#F3F0F7] ${
         beforeImageDesktop ? 'aspect-[4/5] md:aspect-video' : 'aspect-[4/5]'
       }`}
-      // REMOVED onMouseDown/TouchStart from here to allow Carousel Swiping!
     >
        {/* 1. Base Image (Before) */}
        <div className="absolute inset-0 w-full h-full">
@@ -91,7 +89,7 @@ export const ImageComparison = ({
          />
        </div>
        
-       <div className="absolute top-4 right-4 bg-black/30 backdrop-blur-sm text-white px-3 py-1 rounded-full text-sm font-bold z-10 transition-opacity duration-300" style={{ opacity: position < 90 ? 1 : 0 }}>
+       <div className="absolute top-4 right-4 bg-black/35 backdrop-blur-sm text-white px-3.5 py-1 rounded-full text-xs md:text-sm font-bold z-10 transition-opacity duration-300" style={{ opacity: position < 90 ? 1 : 0 }}>
         {beforeLabel}
       </div>
 
@@ -104,13 +102,12 @@ export const ImageComparison = ({
            className="w-full h-full object-cover" 
          />
          
-         <div className="absolute top-4 left-4 bg-[#A68AC2]/80 backdrop-blur-sm text-white px-3 py-1 rounded-full text-sm font-bold z-10 transition-opacity duration-300" style={{ opacity: position > 10 ? 1 : 0 }}>
+         <div className="absolute top-4 left-4 bg-[#9E8FB2]/90 backdrop-blur-sm text-white px-3.5 py-1 rounded-full text-xs md:text-sm font-bold z-10 transition-opacity duration-300" style={{ opacity: position > 10 ? 1 : 0 }}>
           {afterLabel}
         </div>
        </div>
 
        {/* --- SLIDER HANDLE --- */}
-       {/* Events are attached HERE so only the line triggers the compare logic */}
        <div 
          className="absolute top-0 bottom-0 w-1 bg-white cursor-col-resize z-20 shadow-[0_0_10px_rgba(0,0,0,0.3)]" 
          style={{ left: `${position}%`, touchAction: 'none' }}
@@ -121,7 +118,7 @@ export const ImageComparison = ({
         <div className="absolute top-0 bottom-0 -left-6 w-12 h-full z-30 bg-transparent"></div>
 
         {/* The Visible Button */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 bg-[#A68AC2] rounded-full flex items-center justify-center shadow-md border-2 border-white z-40">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 bg-[#9E8FB2] rounded-full flex items-center justify-center shadow-md border-2 border-white z-40">
           <MoveHorizontal size={20} className="text-white" />
         </div>
       </div>
@@ -132,6 +129,25 @@ export const ImageComparison = ({
 // --- Main Component: BeforeAfterSection ---
 const BeforeAfterSection = ({ images }) => {
   const scrollRef = useRef(null);
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  const handleScroll = useCallback(() => {
+    if (!scrollRef.current) return;
+    const container = scrollRef.current;
+    const cardWidth = window.innerWidth < 768 ? window.innerWidth * 0.85 : 500;
+    const scrollPos = Math.abs(container.scrollLeft);
+    const idx = Math.min(images.length - 1, Math.max(0, Math.round(scrollPos / cardWidth)));
+    setActiveIndex(idx);
+  }, [images.length]);
+
+  const scrollToSlide = (index) => {
+    if (!scrollRef.current) return;
+    const container = scrollRef.current;
+    const cardWidth = window.innerWidth < 768 ? window.innerWidth * 0.85 + 16 : 516;
+    // RTL scrollLeft can be negative or positive depending on browser implementation
+    container.scrollTo({ left: -index * cardWidth, behavior: 'smooth' });
+    setActiveIndex(index);
+  };
 
   const scroll = (direction) => {
     if (scrollRef.current) {
@@ -147,13 +163,14 @@ const BeforeAfterSection = ({ images }) => {
   };
 
   return (
-    <section id="results" className="py-24 bg-white overflow-hidden relative">
+    <section id="results" className="py-16 md:py-24 bg-white overflow-hidden relative scroll-mt-20">
       <div className="max-w-7xl mx-auto">
-        <div className="text-center mb-10 px-4">
-          <h2 className="font-serif text-4xl md:text-5xl font-bold text-[#2E2A35] mb-4">תוצאות שמדברות בעד עצמן</h2>
-          <div className="w-20 h-1 bg-[#A68AC2] mx-auto rounded-full mb-6"></div>
-          <p className="text-gray-500 text-lg">
-            החליקי את התמונה כדי לראות את השינוי,<br className="md:hidden"/> או השתמשי בחיצים לדפדף
+        <div className="text-center mb-8 md:mb-12 px-4">
+          <span className="text-xs md:text-sm font-bold tracking-[0.2em] text-[#9E8FB2] uppercase block mb-2">לפני ואחרי</span>
+          <h2 className="font-serif text-3xl sm:text-4xl md:text-5xl font-bold text-[#2E2A35] mb-4">תוצאות שמדברות בעד עצמן</h2>
+          <div className="w-16 md:w-20 h-1 bg-[#9E8FB2] mx-auto rounded-full mb-4 md:mb-6"></div>
+          <p className="text-gray-500 text-base md:text-lg">
+            הזיזי את הקו שעל התמונה כדי לראות את השינוי,<br className="md:hidden"/> או החליקי הצידה לדפדוף בין מקרים
           </p>
         </div>
 
@@ -181,7 +198,8 @@ const BeforeAfterSection = ({ images }) => {
           {/* The Carousel */}
           <div 
             ref={scrollRef}
-            className="flex overflow-x-auto snap-x snap-mandatory gap-4 pb-12 px-4 md:px-8 scrollbar-hide -mx-4 md:mx-0"
+            onScroll={handleScroll}
+            className="flex overflow-x-auto snap-x snap-mandatory gap-4 pb-6 md:pb-10 px-4 md:px-8 scrollbar-hide -mx-4 md:mx-0"
           >
             {/* Spacer for mobile layout */}
             <div className="w-2 shrink-0 md:hidden"></div>
@@ -203,9 +221,11 @@ const BeforeAfterSection = ({ images }) => {
                 </div>
                 
                 {/* SAFE ZONE: Text area */}
-                <div className="mt-4 text-center select-none py-4">
-                  <h3 className="font-bold text-[#2E2A35] text-xl">{pair.title || pair.displayTitle}</h3>
-                  <p className="text-gray-500 text-sm">{pair.desc || "דפדפי למקרה הבא ->"}</p>
+                <div className="mt-3 text-center select-none py-2">
+                  <div className="inline-flex items-center gap-2 bg-[#F3F0F7]/70 px-3.5 py-1 rounded-full mb-1">
+                    <h3 className="font-serif font-bold text-[#2E2A35] text-lg md:text-xl">{pair.title || pair.displayTitle}</h3>
+                  </div>
+                  <p className="text-gray-400 text-xs md:text-sm block">{pair.desc || "החליקי לראות את השינוי"}</p>
                 </div>
               </div>
             ))}
@@ -213,13 +233,35 @@ const BeforeAfterSection = ({ images }) => {
             {/* Spacer for mobile layout */}
             <div className="w-2 shrink-0 md:hidden"></div>
           </div>
+
+          {/* Mobile Pagination Dots & Counter */}
+          {images.length > 1 && (
+            <div className="flex flex-col items-center gap-2 mb-4 md:hidden">
+              <div className="flex items-center justify-center gap-1.5">
+                {images.map((_, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => scrollToSlide(idx)}
+                    aria-label={`עבור לתמונה ${idx + 1}`}
+                    className={`h-2 rounded-full transition-all duration-300 ${
+                      activeIndex === idx ? 'w-6 bg-[#9E8FB2]' : 'w-2 bg-[#9E8FB2]/25'
+                    }`}
+                  />
+                ))}
+              </div>
+              <span className="text-xs font-semibold text-gray-400">
+                {activeIndex + 1} מתוך {images.length}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* UPDATED CALL TO ACTION BUTTON */}
-        <div className="text-center mt-8">
+        <div className="text-center mt-4 md:mt-8">
           <a 
-            href="/gallery.html" // Changed to standard anchor tag or use Link if using React Router
-            className="inline-block bg-[#9E8FB2] text-white font-bold py-4 px-10 rounded-full shadow-lg hover:bg-[#8D7FA3] transition-all active:scale-95 text-lg transform hover:-translate-y-1"
+            href="/gallery.html"
+            className="inline-block bg-[#9E8FB2] text-white font-bold py-3.5 md:py-4 px-8 md:px-10 rounded-full shadow-lg hover:bg-[#8D7FA3] transition-all active:scale-95 text-base md:text-lg transform hover:-translate-y-1"
           >
             לצפייה בגלריה המלאה
           </a>

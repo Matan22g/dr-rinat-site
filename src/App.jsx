@@ -412,45 +412,45 @@ const App = () => {
       {/* --- HERO SECTION --- */}
       <section id="hero" className="relative pt-20 overflow-hidden">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between min-h-[auto] md:min-h-[85vh]">
-          <div className="relative w-full h-[70vh] md:h-[85vh] md:w-[45%] order-1">
+          <div className="relative w-full h-[50vh] sm:h-[58vh] md:h-[85vh] md:w-[45%] order-1">
             <div className="w-full h-full bg-gray-200 absolute inset-0 animate-pulse" />
             <img
               src={webPro}
               alt="Dr. Rinat Professional"
               className="w-full h-full object-cover object-top shadow-lg md:shadow-none relative z-10"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#FDFBFE] via-transparent to-transparent md:hidden opacity-90 z-20"></div>
+            <div className="absolute inset-0 bg-gradient-to-t from-[#FDFBFE] via-transparent to-transparent md:hidden opacity-95 z-20"></div>
           </div>
 
-          <div className="relative z-10 flex flex-col justify-center px-6 py-12 md:py-0 md:px-20 bg-[#FDFBFE] md:w-[55%] order-2 text-center md:text-right">
+          <div className="relative z-30 flex flex-col justify-center px-5 pt-4 pb-10 -mt-8 md:mt-0 md:py-0 md:px-20 bg-[#FDFBFE] rounded-t-[32px] md:rounded-none md:w-[55%] order-2 text-center md:text-right">
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.8 }}
             >
-              <h2 className="text-[#9E8FB2] font-bold tracking-[0.2em] text-sm mb-4 uppercase">רפואה אסתטית מתקדמת</h2>
-              <h1 className="font-serif text-5xl md:text-7xl font-bold text-[#2E2A35] leading-[1.1] mb-6">
+              <h2 className="text-[#9E8FB2] font-bold tracking-[0.2em] text-xs md:text-sm mb-2.5 md:mb-4 uppercase">רפואה אסתטית מתקדמת</h2>
+              <h1 className="font-serif text-4xl sm:text-5xl md:text-7xl font-bold text-[#2E2A35] leading-[1.12] mb-4 md:mb-6">
                 להדגיש את <br />
                 <span className="italic text-[#9E8FB2]">היופי הטבעי</span> שלך
               </h1>
-              <p className="text-xl text-gray-600 mb-10 leading-relaxed max-w-lg mx-auto md:mx-0">
+              <p className="text-base sm:text-lg md:text-xl text-gray-600 mb-7 md:mb-10 leading-relaxed max-w-lg mx-auto md:mx-0">
                 טיפולים מותאמים אישית המשלבים ידע רפואי רחב עם עין אומנותית, לתוצאות הרמוניות וזוהרות שנשמרות לאורך זמן.
               </p>
 
-              <div className="flex flex-col sm:flex-row gap-5 justify-center md:justify-start">
+              <div className="flex flex-col sm:flex-row gap-3.5 sm:gap-5 justify-center md:justify-start">
                 <a
                   href={`https://wa.me/972559396093?text=${encodeURIComponent('היי ד״ר רינת, הגעתי דרך האתר ואשמח לפרטים נוספים לגבי טיפול...')}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="bg-[#25D366] text-white px-10 py-5 rounded-full font-bold text-xl hover:bg-[#1EBE57] transition-all shadow-xl shadow-[#25D366]/30 flex items-center justify-center gap-3 active:scale-95"
+                  className="bg-[#25D366] text-white px-8 md:px-10 py-4 md:py-5 rounded-full font-bold text-lg md:text-xl hover:bg-[#1EBE57] transition-all shadow-xl shadow-[#25D366]/30 flex items-center justify-center gap-3 active:scale-95"
                 >
                   <WhatsappIcon size={22} />
                   מעוניינת בעוד פרטים
                 </a>
                 <button
                   onClick={(e) => handleScrollTo(e, '#treatments')}
-                  className="border-2 border-[#9E8FB2] text-[#9E8FB2] px-10 py-5 rounded-full font-bold text-xl hover:bg-[#F3F0F7] transition-all active:scale-95"
+                  className="border-2 border-[#9E8FB2] text-[#9E8FB2] px-8 md:px-10 py-3.5 md:py-5 rounded-full font-bold text-lg md:text-xl hover:bg-[#F3F0F7] transition-all active:scale-95"
                 >
                   לכל הטיפולים
                 </button>
@@ -461,9 +461,9 @@ const App = () => {
       </section>
 
       {/* --- Trust Grid --- */}
-      <section className="bg-[#F3F0F7] py-24">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-12 lg:gap-8">
+      <section className="bg-[#F3F0F7] py-10 md:py-20">
+        <div className="max-w-7xl mx-auto px-3.5 sm:px-6">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 lg:gap-8">
             {TRUST_ITEMS.map((item, index) => (
               <motion.div
                 key={index}
@@ -471,12 +471,12 @@ const App = () => {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: index * 0.1 }}
-                className="flex flex-col items-center text-center gap-5 group"
+                className="flex items-center md:flex-col text-right md:text-center gap-3 md:gap-5 group bg-white/80 md:bg-transparent p-3.5 md:p-0 rounded-2xl border border-white md:border-none shadow-2xs md:shadow-none"
               >
-                <div className="w-24 h-24 rounded-full bg-white flex items-center justify-center text-[#9E8FB2] shadow-sm border border-[#9E8FB2]/10 transition-transform group-hover:scale-110 duration-300 group-hover:shadow-md">
-                  <item.icon size={44} strokeWidth={1} />
+                <div className="w-12 h-12 md:w-24 md:h-24 rounded-2xl md:rounded-full bg-[#FDFBFE] md:bg-white flex items-center justify-center text-[#9E8FB2] shadow-2xs md:shadow-sm border border-[#9E8FB2]/15 transition-transform group-hover:scale-110 duration-300 group-hover:shadow-md shrink-0">
+                  <item.icon size={24} strokeWidth={1.4} className="md:scale-150" />
                 </div>
-                <h3 className="font-serif text-2xl font-bold text-[#2E2A35] leading-tight">{item.label}</h3>
+                <h3 className="font-serif text-base sm:text-lg md:text-2xl font-bold text-[#2E2A35] leading-snug">{item.label}</h3>
               </motion.div>
             ))}
           </div>
@@ -630,21 +630,21 @@ const App = () => {
       <TestimonialsSection />
 
       {/* --- About Section --- */}
-      <section id="about" className="py-28 bg-[#2E2A35] text-white relative overflow-hidden scroll-mt-20">
+      <section id="about" className="py-16 md:py-28 bg-[#2E2A35] text-white relative overflow-hidden scroll-mt-20">
         <div className="absolute top-0 left-0 w-64 h-64 bg-[#9E8FB2] opacity-5 rounded-full -translate-x-1/2 -translate-y-1/2 blur-3xl"></div>
-        <div className="max-w-7xl mx-auto px-4 grid lg:grid-cols-2 gap-20 items-center">
+        <div className="max-w-7xl mx-auto px-5 sm:px-6 grid lg:grid-cols-2 gap-10 lg:gap-20 items-center">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
-            className="relative group"
+            className="relative group max-w-md mx-auto lg:max-w-none w-full"
           >
-            <div className="absolute -inset-4 border-2 border-[#9E8FB2]/30 rounded-[40px] translate-x-4 translate-y-4 group-hover:translate-x-2 group-hover:translate-y-2 transition-transform duration-500"></div>
+            <div className="absolute -inset-2.5 md:-inset-4 border-2 border-[#9E8FB2]/30 rounded-[32px] md:rounded-[40px] translate-x-2 translate-y-2 md:translate-x-4 md:translate-y-4 group-hover:translate-x-1.5 group-hover:translate-y-1.5 transition-transform duration-500"></div>
             <img
               src={webAcd}
               alt="Dr. Rinat Professional"
               loading="lazy"
-              className="rounded-[40px] shadow-2xl relative z-10 w-full aspect-[4/5] object-cover grayscale hover:grayscale-0 transition-all duration-1000"
+              className="rounded-[28px] md:rounded-[40px] shadow-2xl relative z-10 w-full aspect-[4/5] object-cover md:grayscale md:hover:grayscale-0 transition-all duration-1000"
             />
           </motion.div>
 
@@ -653,9 +653,11 @@ const App = () => {
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.8 }}
+            className="text-center lg:text-right"
           >
-            <h2 className="font-serif text-4xl md:text-6xl font-bold mb-10 leading-tight">ד״ר רינת - מצוינות <br /><span className="text-[#9E8FB2]">ברפואה אסתטית</span></h2>
-            <div className="space-y-6 text-xl text-gray-300 leading-relaxed font-light">
+            <span className="text-xs md:text-sm font-bold tracking-[0.2em] text-[#9E8FB2] uppercase block mb-2">הכירי את הרופאה</span>
+            <h2 className="font-serif text-3xl sm:text-4xl md:text-6xl font-bold mb-6 md:mb-10 leading-tight">ד״ר רינת - מצוינות <br /><span className="text-[#9E8FB2]">ברפואה אסתטית</span></h2>
+            <div className="space-y-4 md:space-y-6 text-base sm:text-lg md:text-xl text-gray-300 leading-relaxed font-light">
               <p>עם ניסיון רב בתחום הרפואה והאסתטיקה, ד״ר רינת מובילה קו טיפולי המבוסס על דיוק רפואי, בטיחות מקסימלית ותוצאות טבעיות המדגישות את היופי הקיים.</p>
               <p>המרפאה שלנו חורטת על דגלה שירות אישי ומקצועי, תוך שימוש בחומרים האיכותיים והמאושרים ביותר בעולם הרפואה האסתטית, כדי להבטיח את שביעות רצונך המלאה.</p>
             </div>
