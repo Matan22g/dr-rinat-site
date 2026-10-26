@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { CheckCheck, User, Eye, X, Star, Quote } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import reviewsData from './reviews.json';
@@ -7,6 +7,32 @@ const TestimonialsSection = () => {
   const [selectedProof, setSelectedProof] = useState(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const scrollRef = useRef(null);
+
+  // Preload review proof images to prevent blank flash when opened
+  useEffect(() => {
+    reviewsData.forEach((review) => {
+      if (review.proof_image) {
+        const img = new Image();
+        img.src = new URL(`./imgs/reviews/${review.proof_image}`, import.meta.url).href;
+      }
+    });
+  }, []);
+
+  // Lock body scroll and prevent viewport resizing jitter while modal is open
+  useEffect(() => {
+    if (selectedProof) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      const handleKeyDown = (e) => {
+        if (e.key === 'Escape') setSelectedProof(null);
+      };
+      window.addEventListener('keydown', handleKeyDown);
+      return () => {
+        document.body.style.overflow = originalOverflow;
+        window.removeEventListener('keydown', handleKeyDown);
+      };
+    }
+  }, [selectedProof]);
 
   const handleScroll = useCallback(() => {
     if (!scrollRef.current) return;
@@ -123,34 +149,43 @@ const TestimonialsSection = () => {
           </div>
         )}
 
-        {/* Lightbox Modal */}
+        {/* Lightbox Modal (Optimized to eliminate mobile GPU flicker) */}
         <AnimatePresence>
           {selectedProof && (
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-[70] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="fixed inset-0 z-[70] bg-black/85 flex items-center justify-center p-4 touch-none select-none overscroll-none"
               onClick={() => setSelectedProof(null)}
             >
+              {/* Top Close Button */}
               <button 
                 type="button"
-                className="absolute top-6 right-6 w-11 h-11 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center transition-colors"
+                className="absolute top-5 right-5 w-11 h-11 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition-colors active:scale-95 z-10"
                 onClick={() => setSelectedProof(null)}
                 aria-label="סגור צילום מסך"
               >
-                <X size={28} />
+                <X size={26} />
               </button>
               
-              <motion.img 
-                initial={{ scale: 0.9, opacity: 0 }}
+              {/* Image Container */}
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.9, opacity: 0 }}
-                src={new URL(`./imgs/reviews/${selectedProof.proof_image}`, import.meta.url).href}
-                alt={`Original review from ${selectedProof.name}`}
-                className="max-w-full max-h-[85vh] rounded-2xl shadow-2xl"
+                exit={{ scale: 0.95, opacity: 0 }}
+                transition={{ duration: 0.22, ease: "easeOut" }}
+                className="relative max-w-full max-h-[85vh] rounded-2xl overflow-hidden shadow-2xl bg-black transform-gpu"
                 onClick={(e) => e.stopPropagation()}
-              />
+              >
+                <img 
+                  src={new URL(`./imgs/reviews/${selectedProof.proof_image}`, import.meta.url).href}
+                  alt={`Original review from ${selectedProof.name}`}
+                  className="w-auto h-auto max-w-full max-h-[85vh] object-contain rounded-2xl block"
+                  decoding="async"
+                />
+              </motion.div>
             </motion.div>
           )}
         </AnimatePresence>
