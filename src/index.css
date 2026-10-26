@@ -6,15 +6,12 @@
 
 @layer base {
   html, body {
-    height: 100vh;
-    
-    height: var(--app-height, 100vh);
-    
-    overflow-x: hidden; 
+    min-height: 100vh;
+    min-height: var(--app-height, 100vh);
+    overflow-x: clip;
     background-color: #FDFBFE; 
     @apply bg-light text-dark font-sans;
     direction: rtl; 
-    
     overscroll-behavior-y: none;
   }
 

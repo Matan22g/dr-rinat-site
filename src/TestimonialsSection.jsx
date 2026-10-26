@@ -1,38 +1,41 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { CheckCheck, User, Eye, X, Star, Quote } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
 import reviewsData from './reviews.json';
 
+// Pre-resolve all proof image URLs once at module load
+const PROOF_IMAGE_URLS = Object.fromEntries(
+  reviewsData
+    .filter((r) => r.proof_image)
+    .map((r) => [r.id, new URL(`./imgs/reviews/${r.proof_image}`, import.meta.url).href])
+);
+
 const TestimonialsSection = () => {
-  const [selectedProof, setSelectedProof] = useState(null);
+  const [selectedProofId, setSelectedProofId] = useState(null);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [isMounted, setIsMounted] = useState(false);
   const scrollRef = useRef(null);
 
-  // Preload review proof images to prevent blank flash when opened
   useEffect(() => {
-    reviewsData.forEach((review) => {
-      if (review.proof_image) {
-        const img = new Image();
-        img.src = new URL(`./imgs/reviews/${review.proof_image}`, import.meta.url).href;
-      }
-    });
+    setIsMounted(true);
   }, []);
 
-  // Lock body scroll and prevent viewport resizing jitter while modal is open
+  const openProof = (reviewId) => {
+    setSelectedProofId(reviewId);
+  };
+
+  const closeProof = () => {
+    setSelectedProofId(null);
+  };
+
   useEffect(() => {
-    if (selectedProof) {
-      const originalOverflow = document.body.style.overflow;
-      document.body.style.overflow = 'hidden';
-      const handleKeyDown = (e) => {
-        if (e.key === 'Escape') setSelectedProof(null);
-      };
-      window.addEventListener('keydown', handleKeyDown);
-      return () => {
-        document.body.style.overflow = originalOverflow;
-        window.removeEventListener('keydown', handleKeyDown);
-      };
-    }
-  }, [selectedProof]);
+    if (selectedProofId === null) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') closeProof();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedProofId]);
 
   const handleScroll = useCallback(() => {
     if (!scrollRef.current) return;
@@ -50,6 +53,8 @@ const TestimonialsSection = () => {
     container.scrollTo({ left: -index * cardWidth, behavior: 'smooth' });
     setActiveIndex(index);
   };
+
+  const isOpen = selectedProofId !== null;
 
   return (
     <section id="testimonials" className="py-16 md:py-24 bg-[#FDFBFE] overflow-hidden scroll-mt-20">
@@ -112,7 +117,7 @@ const TestimonialsSection = () => {
                     {review.proof_image ? (
                       <button 
                         type="button"
-                        onClick={() => setSelectedProof(review)}
+                        onClick={() => openProof(review.id)}
                         className="inline-flex items-center gap-1.5 text-xs font-bold text-[#9E8FB2] bg-white hover:bg-[#9E8FB2] hover:text-white border border-[#9E8FB2]/25 px-3 py-1.5 rounded-full transition-colors shadow-2xs"
                       >
                         <Eye size={13} />
@@ -148,48 +153,52 @@ const TestimonialsSection = () => {
             ))}
           </div>
         )}
-
-        {/* Lightbox Modal (Optimized to eliminate mobile GPU flicker) */}
-        <AnimatePresence>
-          {selectedProof && (
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2, ease: "easeOut" }}
-              className="fixed inset-0 z-[70] bg-black/85 flex items-center justify-center p-4 touch-none select-none overscroll-none"
-              onClick={() => setSelectedProof(null)}
-            >
-              {/* Top Close Button */}
-              <button 
-                type="button"
-                className="absolute top-5 right-5 w-11 h-11 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition-colors active:scale-95 z-10"
-                onClick={() => setSelectedProof(null)}
-                aria-label="סגור צילום מסך"
-              >
-                <X size={26} />
-              </button>
-              
-              {/* Image Container */}
-              <motion.div
-                initial={{ scale: 0.95, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.95, opacity: 0 }}
-                transition={{ duration: 0.22, ease: "easeOut" }}
-                className="relative max-w-full max-h-[85vh] rounded-2xl overflow-hidden shadow-2xl bg-black transform-gpu"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <img 
-                  src={new URL(`./imgs/reviews/${selectedProof.proof_image}`, import.meta.url).href}
-                  alt={`Original review from ${selectedProof.name}`}
-                  className="w-auto h-auto max-w-full max-h-[85vh] object-contain rounded-2xl block"
-                  decoding="async"
-                />
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
       </div>
+
+      {/* Persistent Portal Lightbox with pre-decoded individual image nodes (zero src-swap flash) */}
+      {isMounted &&
+        createPortal(
+          <div
+            aria-hidden={!isOpen}
+            onClick={closeProof}
+            onTouchMove={(e) => {
+              if (isOpen) e.preventDefault();
+            }}
+            className={`fixed inset-0 z-[90] bg-black/90 flex items-center justify-center p-4 select-none transition-opacity duration-150 ${
+              isOpen ? 'opacity-100 visible pointer-events-auto' : 'opacity-0 invisible pointer-events-none'
+            }`}
+          >
+            <button
+              type="button"
+              onClick={closeProof}
+              aria-label="סגור צילום מסך"
+              className="absolute top-5 right-5 w-11 h-11 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition-colors z-10"
+            >
+              <X size={26} />
+            </button>
+
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="relative max-w-full max-h-[85vh] rounded-2xl overflow-hidden shadow-2xl bg-black"
+            >
+              {reviewsData.map((r) =>
+                r.proof_image ? (
+                  <img
+                    key={r.id}
+                    src={PROOF_IMAGE_URLS[r.id]}
+                    alt={`Original review from ${r.name}`}
+                    loading="eager"
+                    decoding="sync"
+                    className={`w-auto h-auto max-w-full max-h-[85vh] object-contain rounded-2xl ${
+                      selectedProofId === r.id ? 'block' : 'hidden'
+                    }`}
+                  />
+                ) : null
+              )}
+            </div>
+          </div>,
+          document.body
+        )}
     </section>
   );
 };
