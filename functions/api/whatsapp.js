@@ -1199,6 +1199,13 @@ export async function onRequest({ request, env, waitUntil }) {
               content = msg.interactive?.button_reply?.title || "";
               metadata.button_id = msg.interactive?.button_reply?.id;
 
+            } else if (messageType === "reaction") {
+              // Keep reactions distinct from text: they never enter AI debounce or booking selection.
+              metadata.reaction = {
+                message_id: typeof msg.reaction?.message_id === "string" ? msg.reaction.message_id : null,
+                emoji: typeof msg.reaction?.emoji === "string" ? msg.reaction.emoji : null
+              };
+
             } else if (messageType === "image" || messageType === "video") {
               const media = msg[messageType];
               content = media?.caption || "";

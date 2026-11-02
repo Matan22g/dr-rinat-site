@@ -85,10 +85,10 @@ test('Wrong topic or unapproved admin cannot send a photo', async () => {
   }
 });
 
-async function inbound(f, caption, useQueue) {
+async function inbound(f, caption, useQueue, reaction = null) {
   const body = JSON.stringify({ object: 'whatsapp_business_account', entry: [{ changes: [{ value: {
     metadata: { phone_number_id: 'fake-phone' }, contacts: [{ profile: { name: 'Test' } }],
-    messages: [{ from: phone, id: 'incoming-id', type: 'image', image: { id: 'incoming-media', caption } }],
+    messages: [reaction ? { from: phone, id: 'incoming-id', type: 'reaction', reaction } : { from: phone, id: 'incoming-id', type: 'image', image: { id: 'incoming-media', caption } }],
   } }] }] });
   const key = await crypto.subtle.importKey('raw', new TextEncoder().encode('fake-meta'), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
   const signature = Buffer.from(await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(body))).toString('hex');
@@ -120,3 +120,18 @@ for (const caption of ['caption 🌸', 'א'.repeat(1024)]) {
   });
 }
 
+
+for (const emoji of ['👍', '']) {
+  test('Queued reaction preserves target and ' + (emoji ? 'emoji' : 'removal') + ' without AI generation or sending', async () => {
+    const f = fixture();
+    await inbound(f, '', true, { message_id: 'original-wa-id', emoji });
+    const insert = f.sqls.find(s => s.sql.includes('INSERT INTO messages'));
+    assert.equal(insert.args[3], 'reaction');
+    assert.equal(insert.args[4], '');
+    assert.deepEqual(JSON.parse(insert.args[5]).reaction, { message_id: 'original-wa-id', emoji });
+    assert.equal(f.queue.length, 1);
+    assert.equal(f.queue[0].aiGeneration, undefined);
+    assert.equal(f.sqls.some(s => s.sql.includes('ai_generation = ai_generation + 1')), false);
+    assert.equal(f.calls.length, 0);
+  });
+}
