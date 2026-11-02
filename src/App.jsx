@@ -155,7 +155,7 @@ const WhatsappIcon = ({ size = 24, className }) => (
 const SOCIAL_LINKS = [
   {
     name: 'Instagram',
-    href: 'https://www.instagram.com/dr.rinat.ben_tovim?igsh=anR2ZGJ3OGZjZW40',
+    href: 'https://www.instagram.com/r.b.t_aesthetics',
     icon: InstagramIcon
   },
   {
