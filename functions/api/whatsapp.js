@@ -422,6 +422,59 @@ export async function onRequest({ request, env, waitUntil }) {
         });
       }
 
+      // Operator retry is a control event, never a manual WhatsApp reply.
+      // Intercept even malformed/unquoted commands before the generic reply path.
+      const retryCallback = String(body.callback_query?.data || '').match(/^pilot_retry:([0-9a-f-]{36})$/i);
+      const retryText = String(body.message?.text || '').trim();
+      const retryCommand = /^\/retry(?:@\w+)?(?:\s|$)/i.test(retryText);
+      if (retryCallback || retryCommand) {
+        const callback = body.callback_query;
+        const message = callback?.message || body.message;
+        const parent = callback ? message : message.reply_to_message;
+        const threadId = message?.message_thread_id;
+        const cardMessageId = parent?.message_id;
+        const botId = String(env.TELEGRAM_BOT_TOKEN || '').split(':')[0];
+        const ownBot = parent?.from?.is_bot === true && (!/^\d+$/.test(botId) || String(parent.from.id) === botId);
+        const keys = (parent?.reply_markup?.inline_keyboard || []).flat()
+          .map(button => String(button.callback_data || '').match(/^pilot_(?:approve|reject|retry):([0-9a-f-]{36})$/i)?.[1])
+          .filter(Boolean);
+        const ids = [...new Set(keys)];
+        const draftId = retryCallback?.[1] || (ids.length === 1 ? ids[0] : null);
+        const explain = async (text) => {
+          if (callback) await answerTelegramCallback(callback.id, text, env, true);
+          else if (String(message?.chat?.id) === String(env.TELEGRAM_CHAT_ID) && Number.isSafeInteger(threadId))
+            await sendTelegram('sendMessage', { message_thread_id: threadId, text }, env);
+        };
+        if (env.AI_PILOT_MODE !== 'true' || !env.AI_QUEUE) {
+          await explain('אפשרות ההצעות החדשות אינה פעילה.');
+          return new Response('OK', { status: 200 });
+        }
+        if (String(message?.chat?.id) !== String(env.TELEGRAM_CHAT_ID) || !ownBot ||
+            !Number.isSafeInteger(threadId) || threadId <= 0 || !Number.isSafeInteger(cardMessageId) || cardMessageId <= 0 ||
+            String(parent?.chat?.id) !== String(env.TELEGRAM_CHAT_ID) || parent?.message_thread_id !== threadId ||
+            (retryCommand && (!Number.isSafeInteger(message.message_id) || message.message_id <= 0)) || !draftId || (retryCommand && !/^\/retry(?:@\w+)?$/i.test(retryText))) {
+          await explain('כדי לקבל הצעה חדשה, צטטי הצעת תשובה שעדיין ממתינה וכתבי /retry.');
+          return new Response('OK', { status: 200 });
+        }
+        try {
+          const draft = await env.DB.prepare('SELECT d.id,d.status,c.phone FROM ai_drafts d JOIN conversations c ON c.id=d.conversation_id WHERE d.id=?').bind(draftId).first();
+          if (!draft || draft.status !== 'PENDING' || !await matchesTelegramTopic(draft.phone, threadId, env)) {
+            await explain('ההצעה כבר טופלה או אינה שייכת לשיחה הזו.');
+            return new Response('OK', { status: 200 });
+          }
+          await env.AI_QUEUE.send({
+            type: 'AI_DRAFT_REGENERATE', draftId,
+            requestKey: callback ? `callback:${callback.id}` : `command:${message.chat.id}:${message.message_id}`,
+            actorId: String((callback?.from || message.from).id), chatId: String(message.chat.id), threadId, cardMessageId
+          }, { delaySeconds: 0 });
+          if (callback) await answerTelegramCallback(callback.id, 'הבקשה להצעה חדשה התקבלה', env);
+          return new Response('OK', { status: 200 });
+        } catch {
+          console.error('AI_DRAFT_REGENERATION_QUEUE_FAILED');
+          return new Response('Retry', { status: 503 });
+        }
+      }
+
       // Follow-ups have their own cards; they never consume or approve an AI draft.
       const followUpMatch = String(body.callback_query?.data || '').match(/^followup_(approve|reject):([0-9a-f-]{36})$/i);
       if (followUpMatch) {

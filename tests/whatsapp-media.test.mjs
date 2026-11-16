@@ -135,3 +135,67 @@ for (const emoji of ['👍', '']) {
     assert.equal(f.calls.length, 0);
   });
 }
+
+
+// Both entrypoints queue a control event; neither may reach manual WhatsApp delivery.
+const retryDraftId = '12345678-1234-1234-1234-123456789abc';
+function retryFixture(options = {}) {
+  const f = fixture(options);
+  f.env.AI_PILOT_MODE = 'true';
+  const prepare = f.env.DB.prepare;
+  f.env.DB.prepare = (sql) => sql.startsWith('SELECT d.id,d.status,c.phone FROM ai_drafts')
+    ? { bind: () => ({ first: async () => ({ id: retryDraftId, status: 'PENDING', phone }) }) }
+    : prepare(sql);
+  return f;
+}
+const retryCard = () => ({ message_id: 40, from: { id: 99, is_bot: true }, chat: { id: -100 }, message_thread_id: 10,
+  text: 'AI preview', reply_markup: { inline_keyboard: [[{ text: 'Approve', callback_data: `pilot_approve:${retryDraftId}` },
+    { text: 'Reject', callback_data: `pilot_reject:${retryDraftId}` }]] } });
+async function retryCallback(f, overrides = {}) {
+  const old = globalThis.fetch; globalThis.fetch = f.fetch;
+  try { return await onRequest({ env: f.env, request: new Request('https://example.invalid/api/whatsapp', {
+    method: 'POST', headers: { 'X-Telegram-Bot-Api-Secret-Token': 'fake-secret' },
+    body: JSON.stringify({ update_id: 2, callback_query: { id: 'retry-one', from: { id: 7 }, message: retryCard(),
+      data: `pilot_retry:${retryDraftId}`, ...overrides } })
+  }) }); } finally { globalThis.fetch = old; }
+}
+test('Retry callback and quoted legacy preview share a supervised control Queue event', async () => {
+  for (const entry of ['callback', 'command']) {
+    const f = retryFixture();
+    const response = entry === 'callback' ? await retryCallback(f)
+      : await telegram(f, { message_id: 41, text: '/retry', reply_to_message: retryCard() });
+    assert.equal(response.status, 200); assert.equal(f.queue.length, 1);
+    assert.deepEqual(f.queue[0], { type: 'AI_DRAFT_REGENERATE', draftId: retryDraftId,
+      requestKey: entry === 'callback' ? 'callback:retry-one' : 'command:-100:41',
+      actorId: '7', chatId: '-100', threadId: 10, cardMessageId: 40 });
+    assert.ok(!f.calls.some(c => c.url.includes('graph.facebook.com')));
+    assert.equal(f.sqls.length, 0);
+  }
+});
+test('Retry commands never become manual patient text, including wrong quotes and malformed commands', async () => {
+  for (const change of [
+    { reply_to_message: undefined }, { reply_to_message: { text: `Phone: ${phone}`, message_id: 40 } },
+    { text: '/retry please' }, { reply_to_message: { ...retryCard(), from: { id: 7 } } },
+    { reply_to_message: { ...retryCard(), reply_markup: { inline_keyboard: [] } } },
+    { reply_to_message: { ...retryCard(), message_thread_id: 11 } },
+    { from: { id: 8 } }, { message_thread_id: 11 }
+  ]) {
+    const f = retryFixture();
+    await telegram(f, { message_id: 41, text: '/retry', reply_to_message: retryCard(), ...change });
+    assert.equal(f.queue.length, 0); assert.equal(f.sqls.length, 0);
+    assert.ok(!f.calls.some(c => c.url.includes('graph.facebook.com')));
+  }
+});
+test('Retry callback rejects wrong actor/topic/bot and disabled pilot', async () => {
+  for (const change of [{ from: { id: 8 } }, { message: { ...retryCard(), message_thread_id: 11 } },
+    { message: { ...retryCard(), from: { id: 7 } } }, { off: true }]) {
+    const f = retryFixture(); if (change.off) f.env.AI_PILOT_MODE = 'false';
+    await retryCallback(f, change);
+    assert.equal(f.queue.length, 0); assert.ok(!f.calls.some(c => c.url.includes('graph.facebook.com')));
+  }
+});
+test('Retry queue failure asks Telegram to redeliver without forwarding a command or acknowledging success', async () => {
+  const f = retryFixture(); f.env.AI_QUEUE.send = async () => { throw new Error('queue unavailable'); };
+  assert.equal((await retryCallback(f)).status, 503);
+  assert.ok(!f.calls.some(c => c.url.includes('graph.facebook.com') || c.url.endsWith('answerCallbackQuery')));
+});
